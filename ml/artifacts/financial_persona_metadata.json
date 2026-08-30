@@ -1,0 +1,122 @@
+{
+  "model_name": "financial-persona-kmeans",
+  "model_version": "1.0.0",
+  "training_timestamp": "2026-08-30T07:03:11.772942+00:00",
+  "dataset_type": "synthetic prototype; unsuitable for real-world accuracy claims",
+  "training_rows": 5000,
+  "random_seed": 20260830,
+  "selected_cluster_count": 4,
+  "selection_rule": "Lowest aggregate rank across silhouette (higher), Davies\u2013Bouldin (lower), and Calinski\u2013Harabasz (higher); ties use silhouette then smaller k.",
+  "feature_names": [
+    "savings_ratio",
+    "expense_ratio",
+    "debt_service_ratio",
+    "debt_to_asset_ratio",
+    "solvency_ratio",
+    "liquidity_months",
+    "emergency_fund_months",
+    "income_stability",
+    "dependents",
+    "investment_horizon_years",
+    "volatility_comfort",
+    "investment_experience"
+  ],
+  "evaluation_metrics": {
+    "3": {
+      "silhouette_score": 0.387784,
+      "davies_bouldin_score": 0.941629,
+      "calinski_harabasz_score": 5112.497091
+    },
+    "4": {
+      "silhouette_score": 0.40995,
+      "davies_bouldin_score": 0.920739,
+      "calinski_harabasz_score": 5001.299773
+    },
+    "5": {
+      "silhouette_score": 0.399527,
+      "davies_bouldin_score": 1.008638,
+      "calinski_harabasz_score": 5327.368076
+    },
+    "6": {
+      "silhouette_score": 0.352382,
+      "davies_bouldin_score": 1.328258,
+      "calinski_harabasz_score": 4469.135741
+    },
+    "7": {
+      "silhouette_score": 0.290724,
+      "davies_bouldin_score": 1.600882,
+      "calinski_harabasz_score": 3902.530516
+    }
+  },
+  "centroids": {
+    "0": {
+      "savings_ratio": 0.107379,
+      "expense_ratio": 0.581036,
+      "debt_service_ratio": 0.714875,
+      "debt_to_asset_ratio": 0.776887,
+      "solvency_ratio": 0.206241,
+      "liquidity_months": 0.202793,
+      "emergency_fund_months": 0.182013,
+      "income_stability": 0.554976,
+      "dependents": 0.381183,
+      "investment_horizon_years": 0.3243,
+      "volatility_comfort": 0.297854,
+      "investment_experience": 0.305513
+    },
+    "1": {
+      "savings_ratio": 0.631793,
+      "expense_ratio": 0.380849,
+      "debt_service_ratio": 0.165008,
+      "debt_to_asset_ratio": 0.250529,
+      "solvency_ratio": 0.768387,
+      "liquidity_months": 0.614109,
+      "emergency_fund_months": 0.581592,
+      "income_stability": 0.838214,
+      "dependents": 0.187609,
+      "investment_horizon_years": 0.725065,
+      "volatility_comfort": 0.666476,
+      "investment_experience": 0.664967
+    },
+    "2": {
+      "savings_ratio": 0.147541,
+      "expense_ratio": 0.771629,
+      "debt_service_ratio": 0.182489,
+      "debt_to_asset_ratio": 0.319158,
+      "solvency_ratio": 0.651706,
+      "liquidity_months": 0.379282,
+      "emergency_fund_months": 0.28143,
+      "income_stability": 0.874844,
+      "dependents": 0.298856,
+      "investment_horizon_years": 0.550308,
+      "volatility_comfort": 0.479415,
+      "investment_experience": 0.441904
+    },
+    "3": {
+      "savings_ratio": 0.182803,
+      "expense_ratio": 0.672802,
+      "debt_service_ratio": 0.218051,
+      "debt_to_asset_ratio": 0.48001,
+      "solvency_ratio": 0.46145,
+      "liquidity_months": 0.111985,
+      "emergency_fund_months": 0.092042,
+      "income_stability": 0.483861,
+      "dependents": 0.278026,
+      "investment_horizon_years": 0.35348,
+      "volatility_comfort": 0.284112,
+      "investment_experience": 0.259474
+    }
+  },
+  "persona_by_cluster": {
+    "0": "Debt-Priority Rebuilder",
+    "1": "Long-Horizon Growth Builder",
+    "2": "High-Income Low-Savings Planner",
+    "3": "Liquidity-Constrained Planner"
+  },
+  "cluster_distance_p95": {
+    "0": 2.257675,
+    "1": 2.644049,
+    "2": 2.134016,
+    "3": 2.14983
+  },
+  "diagnostic_archetype_adjusted_rand_score": 0.773632
+}

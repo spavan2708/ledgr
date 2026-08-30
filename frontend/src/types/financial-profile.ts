@@ -63,6 +63,17 @@ export interface ModelFeatures {
   investment_experience: number;
 }
 
+export interface MLPersona {
+  available: boolean;
+  model_name: string;
+  model_version: string | null;
+  persona: string | null;
+  cluster_id: number | null;
+  similarity_score: number | null;
+  key_characteristics: string[];
+  limitations: string[];
+}
+
 export interface ComparativeStrategy {
   name: "Safety First" | "Balanced Progress" | "Growth Focused";
   summary: string;
@@ -91,6 +102,7 @@ export interface FinancialProfileResult {
   health_label: "Needs Attention" | "Developing" | "Healthy" | "Strong";
   score_explanations: ScoreComponent[];
   model_features: ModelFeatures;
+  ml_persona: MLPersona;
   comparative_strategies: ComparativeStrategy[];
   positive_factors: string[];
   risk_factors: string[];
