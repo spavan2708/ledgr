@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+:root { --background: #020617; --foreground: #f8fafc; }
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --font-sans: Arial, Helvetica, sans-serif; --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+* { box-sizing: border-box; }
+html { background: var(--background); }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
+button, a, input, textarea { transition-duration: 180ms; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #34d399; outline-offset: 3px; }
+.ambient-glow { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 75% 15%, rgb(16 185 129 / .12), transparent 33%), radial-gradient(circle at 5% 85%, rgb(14 165 233 / .08), transparent 30%); }
+.eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #6ee7b7; }
+.text-gradient { background: linear-gradient(120deg, #6ee7b7, #38bdf8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-card, .onboarding-card, .result-card { border: 1px solid rgb(255 255 255 / .1); background: rgb(255 255 255 / .045); box-shadow: 0 30px 90px rgb(0 0 0 / .28); backdrop-filter: blur(18px); }
+.hero-card { border-radius: 2rem; padding: 2rem; transform: rotate(1deg); }
+.onboarding-card { position: relative; border-radius: 1.75rem; padding: clamp(1.25rem, 4vw, 3rem); }
+.result-card { border-radius: 1.25rem; padding: 1.5rem; }
+.primary-button, .secondary-button { display: inline-flex; align-items: center; gap: .6rem; border-radius: .85rem; padding: .8rem 1.2rem; font-size: .875rem; font-weight: 700; cursor: pointer; }
+.primary-button { border: 1px solid #34d399; background: #34d399; color: #022c22; box-shadow: 0 12px 35px rgb(52 211 153 / .18); }
+.primary-button:hover { background: #6ee7b7; border-color: #6ee7b7; transform: translateY(-1px); }
+.secondary-button { border: 1px solid rgb(255 255 255 / .12); background: rgb(255 255 255 / .04); color: #cbd5e1; }
+.secondary-button:hover { border-color: rgb(52 211 153 / .45); color: white; }
+.field-shell { display: flex; align-items: center; overflow: hidden; border: 1px solid rgb(255 255 255 / .1); border-radius: .9rem; background: rgb(0 0 0 / .2); transition: border-color 180ms, box-shadow 180ms; }
+.field-shell:focus-within { border-color: rgb(52 211 153 / .6); box-shadow: 0 0 0 3px rgb(52 211 153 / .08); }
+.field-error { border-color: rgb(251 113 133 / .65); }
+.score-ring { --score: 0deg; display: grid; width: 7rem; height: 7rem; flex: none; place-items: center; border-radius: 9999px; background: conic-gradient(#34d399 var(--score), rgb(255 255 255 / .08) 0); }
+.score-ring::before { content: ""; grid-area: 1/1; width: 5.5rem; height: 5.5rem; border-radius: 9999px; background: #0b1424; }
+.score-ring > div { z-index: 1; grid-area: 1/1; display: flex; align-items: baseline; }
+.score-ring strong { font-size: 2rem; color: white; }
+.score-ring span { font-size: .7rem; color: #64748b; }
+.disclosure { overflow: hidden; border: 1px solid rgb(255 255 255 / .1); border-radius: 1rem; background: rgb(255 255 255 / .035); }
+.disclosure > summary { display: flex; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.25rem; color: #e2e8f0; }
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary:hover { background: rgb(255 255 255 / .025); color: white; }
+.disclosure > summary small { display: block; margin-top: .25rem; font-size: .75rem; font-weight: 400; color: #64748b; }
+.disclosure[open] > summary > span:last-child { transform: rotate(45deg); }
+.disclosure > summary > span:last-child { transition: transform 180ms; }
+@media (max-width: 640px) { .hero-card { transform: none; padding: 1.25rem; } }
