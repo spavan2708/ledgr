@@ -56,6 +56,36 @@ curl 'http://127.0.0.1:8000/api/v1/market/regime?mode=live'
 
 Live-provider failure falls back transparently to a labeled cache or bundled demo snapshot. Market context is historical pattern classification, not a forecast or trade signal, and never changes deterministic profile results.
 
+## Goal simulator
+
+The stateless goal API supports multiple goals, configurable scenarios, optional seeded Monte Carlo and deterministic capacity allocation:
+
+```bash
+curl -X POST 'http://127.0.0.1:8000/api/v1/goals/simulate' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "estimated_monthly_capacity": 50000,
+    "monte_carlo_enabled": false,
+    "simulation_count": 1000,
+    "seed": 20260830,
+    "goals": [{
+      "id": "vehicle",
+      "name": "Vehicle",
+      "category": "vehicle",
+      "target_amount": 800000,
+      "amount_basis": "today_value",
+      "current_saved": 100000,
+      "horizon_months": 48,
+      "priority": "high",
+      "flexibility": "somewhat_flexible",
+      "planned_monthly_contribution": 12000,
+      "annual_step_up_percentage": 5
+    }]
+  }'
+```
+
+Set `monte_carlo_enabled` to `true` for seeded P10/P50/P90 and generated-scenario attainment frequency. Safe bounds are 100–10,000 simulations, 1–600 months, -50% to 50% nominal return, 0–100% volatility, and 0–20% inflation. Full formulas, allocation behavior, limitations and privacy details are in [docs/goal-simulator.md](docs/goal-simulator.md).
+
 ## Frontend
 
 In a second terminal:
