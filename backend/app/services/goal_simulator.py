@@ -64,6 +64,14 @@ def required_monthly_contribution(target: float, current: float, annual_return_p
 def simulate_goals(request: GoalSimulationRequest) -> GoalSimulationResponse:
     goal_results = [_simulate_goal(goal, request, index) for index, goal in enumerate(request.goals)]
     capacity = _allocate_capacity(request, goal_results)
+    inputs = {goal.id: goal for goal in request.goals}
+    for allocation in capacity.allocations:
+        result = next(item for item in goal_results if item.id == allocation.goal_id)
+        goal = inputs[result.id]
+        result.assigned_monthly_capacity = allocation.assigned_monthly_capacity
+        result.monthly_capacity_gap = allocation.unfunded_monthly_gap
+        result.capacity_status = "funded" if allocation.unfunded_monthly_gap <= 0.01 else ("partially_funded" if allocation.assigned_monthly_capacity > 0 else "unfunded")
+        result.allocated_capacity_projected_value = round(project_balance(goal.current_saved, allocation.assigned_monthly_capacity, request.assumptions.base.nominal_annual_return, result.horizon_months, goal.annual_step_up_percentage), 2)
     warnings: list[str] = []
     if capacity.capacity_conflicts:
         warnings.append("Available monthly capacity is insufficient to cover all calculated required contributions.")

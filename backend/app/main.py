@@ -1,9 +1,13 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.profile import router as profile_router
 from app.api.v1.market import router as market_router
 from app.api.v1.goals import router as goals_router
+from app.api.v1.agent import router as agent_router
+from app.api.v1.me import router as me_router
 
 app = FastAPI(
     title="FinSync API",
@@ -13,7 +17,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,6 +26,8 @@ app.add_middleware(
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(market_router, prefix="/api/v1")
 app.include_router(goals_router, prefix="/api/v1")
+app.include_router(agent_router, prefix="/api/v1")
+app.include_router(me_router, prefix="/api/v1")
 
 
 @app.get("/")

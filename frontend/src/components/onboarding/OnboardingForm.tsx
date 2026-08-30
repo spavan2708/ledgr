@@ -8,6 +8,7 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { RatingField } from "./RatingField";
 import { formatRupees } from "@/lib/formatters";
 import type { FinancialProfile, FinancialProfileResult, ProfileErrors, ProfileField } from "@/types/financial-profile";
+import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 
 const STEP_LABELS = ["Personal", "Cash flow", "Financial base", "Preferences", "Context", "Review"];
 const INITIAL_PROFILE: FinancialProfile = {
@@ -43,6 +44,7 @@ function StepHeader({ eyebrow, title, description }: { eyebrow: string; title: s
 }
 
 export function OnboardingForm() {
+  const { setProfile: saveProfile } = useFinSyncSession();
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<FinancialProfile>(INITIAL_PROFILE);
   const [errors, setErrors] = useState<ProfileErrors>({});
@@ -76,7 +78,9 @@ export function OnboardingForm() {
         const body: unknown = await response.json().catch(() => null);
         throw new Error(getApiError(body));
       }
-      setResult((await response.json()) as FinancialProfileResult);
+      const analysis = (await response.json()) as FinancialProfileResult;
+      setResult(analysis);
+      saveProfile(profile, analysis);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "We could not analyze your profile. Please try again.");
@@ -106,7 +110,7 @@ export function OnboardingForm() {
 }
 
 function FieldGrid({ children }: { children: ReactNode }) { return <div className="grid gap-6 sm:grid-cols-2">{children}</div>; }
-function MoneyField(props: Omit<React.ComponentProps<typeof FormField>, "prefix" | "type" | "min">) { return <FormField {...props} type="number" min={0} step={100} prefix="₹" />; }
+function MoneyField(props: Omit<React.ComponentProps<typeof FormField>, "prefix" | "type" | "min">) { return <FormField {...props} type="number" min={0} step={1} prefix="₹" />; }
 function Review({ profile }: { profile: FinancialProfile }) {
   const groups = [{ title: "Personal", rows: [["Name", profile.name], ["Age", profile.age], ["Occupation", profile.occupation], ["Dependents", profile.dependents]] }, { title: "Monthly cash flow", rows: [["Income", formatRupees(profile.monthly_income)], ["Essentials", formatRupees(profile.monthly_essential_expenses)], ["Obligations", formatRupees(profile.monthly_financial_obligations)], ["Debt payments", formatRupees(profile.monthly_debt_payments)]] }, { title: "Balance sheet", rows: [["Savings", formatRupees(profile.current_savings)], ["Emergency fund", formatRupees(profile.emergency_fund)], ["Outstanding debt", formatRupees(profile.outstanding_debt)], ["Total assets", formatRupees(profile.total_assets)], ["Liquid assets", formatRupees(profile.liquid_assets)], ["Total liabilities", formatRupees(profile.total_liabilities)]] }, { title: "Preferences", rows: [["Income stability", `${profile.income_stability}/5`], ["Experience", `${profile.investment_experience}/5`], ["Volatility comfort", `${profile.volatility_comfort}/5`], ["Horizon", `${profile.investment_horizon_years} years`]] }];
   return <div className="grid gap-4 sm:grid-cols-2">{groups.map((group) => <section key={group.title} className="rounded-2xl border border-white/10 bg-black/20 p-5"><h2 className="font-bold text-emerald-300">{group.title}</h2><dl className="mt-4 space-y-3">{group.rows.map(([label, value]) => <div key={String(label)} className="flex justify-between gap-4 text-sm"><dt className="text-slate-500">{label}</dt><dd className="text-right text-slate-200">{value}</dd></div>)}</dl></section>)}</div>;
