@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/*.pyc
+.pytest_cache/
+
+# Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# IDE
+.vscode/
+.idea/
