@@ -2,6 +2,7 @@
 
 import { formatRupees } from "@/lib/formatters";
 import type { ComparativeStrategy, FinancialProfileResult, MLPersona, RatioDetail } from "@/types/financial-profile";
+import { MarketContextCard } from "./MarketContextCard";
 
 interface ProfileResultsProps { result: FinancialProfileResult; onEdit: () => void; }
 
@@ -34,6 +35,7 @@ export function ProfileResults({ result, onEdit }: ProfileResultsProps) {
       </section>
 
       <MLPersonaCard persona={result.ml_persona} showDebug={showDebug} />
+      <MarketContextCard showDebug={showDebug} />
 
       {result.warnings.length > 0 && <aside aria-label="Important profile warnings" className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5"><h2 className="flex items-center gap-2 font-bold text-amber-200"><span aria-hidden="true">!</span> Important checks</h2><ul className="mt-2 space-y-1 text-sm leading-6 text-amber-100/80">{result.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></aside>}
 

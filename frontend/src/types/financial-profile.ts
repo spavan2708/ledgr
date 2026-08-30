@@ -74,6 +74,25 @@ export interface MLPersona {
   limitations: string[];
 }
 
+export interface MarketRegime {
+  available: boolean;
+  model_name: string;
+  model_version: string | null;
+  symbol: string;
+  index_name: string;
+  regime: string | null;
+  cluster_id: number | null;
+  similarity_score: number | null;
+  as_of: string;
+  data_mode: "live" | "cached" | "demo" | "unavailable";
+  source: string;
+  latest_market_date: string | null;
+  key_characteristics: string[];
+  interpretation: string;
+  limitations: string[];
+  latest_features: Record<string, number | null>;
+}
+
 export interface ComparativeStrategy {
   name: "Safety First" | "Balanced Progress" | "Growth Focused";
   summary: string;

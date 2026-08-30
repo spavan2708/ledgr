@@ -28,6 +28,34 @@ python3 -m ml.evaluation.evaluate_model
 
 The generated dataset is synthetic, ignored by Git, and unsuitable for real-world accuracy claims. Training writes the reproducible pipeline and metadata to `ml/artifacts/`. If those artifacts are missing, financial analysis continues with `ml_persona.available` set to `false`.
 
+## Market-regime prototype
+
+Download and cache approximately ten years of NIFTY 50 history, train, and evaluate from the repository root:
+
+```bash
+cd backend
+.venv/bin/python -m app.market.download
+cd ..
+backend/.venv/bin/python -m ml.market_regime.training.train_model
+backend/.venv/bin/python -m ml.market_regime.evaluation.evaluate_model
+```
+
+Run deterministic demo inference:
+
+```bash
+cd backend
+.venv/bin/python -m app.ml.market_regime.demo
+```
+
+With the backend running, call demo or live/cached inference:
+
+```bash
+curl 'http://127.0.0.1:8000/api/v1/market/regime?mode=demo'
+curl 'http://127.0.0.1:8000/api/v1/market/regime?mode=live'
+```
+
+Live-provider failure falls back transparently to a labeled cache or bundled demo snapshot. Market context is historical pattern classification, not a forecast or trade signal, and never changes deterministic profile results.
+
 ## Frontend
 
 In a second terminal:

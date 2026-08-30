@@ -1,0 +1,115 @@
+{
+  "model_name": "market-regime-kmeans",
+  "model_version": "1.0.0",
+  "feature_names": [
+    "return_5d",
+    "return_21d",
+    "return_63d",
+    "volatility_21d",
+    "volatility_63d",
+    "distance_ma_50d",
+    "distance_ma_200d",
+    "max_drawdown_63d",
+    "positive_days_21d"
+  ],
+  "selected_cluster_count": 3,
+  "centroids": {
+    "0": {
+      "return_5d": 0.01013369,
+      "return_21d": 0.03639829,
+      "return_63d": 0.07886757,
+      "volatility_21d": 0.11834601,
+      "volatility_63d": 0.13659064,
+      "distance_ma_50d": 0.03718806,
+      "distance_ma_200d": 0.08967162,
+      "max_drawdown_63d": -0.01047831,
+      "positive_days_21d": 0.62564828
+    },
+    "1": {
+      "return_5d": -0.0086605,
+      "return_21d": -0.02154457,
+      "return_63d": -0.00629625,
+      "volatility_21d": 0.14856311,
+      "volatility_63d": 0.14407239,
+      "distance_ma_50d": -0.01685803,
+      "distance_ma_200d": 0.02038678,
+      "max_drawdown_63d": -0.05918707,
+      "positive_days_21d": 0.43555262
+    },
+    "2": {
+      "return_5d": -0.00842692,
+      "return_21d": -0.07093581,
+      "return_63d": -0.25514733,
+      "volatility_21d": 0.54422775,
+      "volatility_63d": 0.49016026,
+      "distance_ma_50d": -0.10547206,
+      "distance_ma_200d": -0.19867752,
+      "max_drawdown_63d": -0.2623825,
+      "positive_days_21d": 0.4591195
+    }
+  },
+  "regime_by_cluster": {
+    "0": "Stable Growth",
+    "1": "Volatile Growth",
+    "2": "Defensive / High-Volatility Decline"
+  },
+  "cluster_distance_p95": {
+    "0": 3.351131,
+    "1": 2.98625,
+    "2": 9.230254
+  },
+  "random_seed": 20260830,
+  "stability_seeds": [
+    20260830,
+    20260831,
+    20260832
+  ],
+  "evaluation_metrics": {
+    "3": {
+      "silhouette_score": 0.313761,
+      "davies_bouldin_score": 1.078286,
+      "calinski_harabasz_score": 917.581154,
+      "seed_stability_ari": 1.0
+    },
+    "4": {
+      "silhouette_score": 0.322152,
+      "davies_bouldin_score": 1.041796,
+      "calinski_harabasz_score": 805.200251,
+      "seed_stability_ari": 0.978749
+    },
+    "5": {
+      "silhouette_score": 0.227962,
+      "davies_bouldin_score": 1.21881,
+      "calinski_harabasz_score": 782.46653,
+      "seed_stability_ari": 0.998288
+    },
+    "6": {
+      "silhouette_score": 0.22005,
+      "davies_bouldin_score": 1.307791,
+      "calinski_harabasz_score": 715.539267,
+      "seed_stability_ari": 0.962962
+    }
+  },
+  "selection_rule": "Lowest aggregate rank across silhouette, Davies\u2013Bouldin, Calinski\u2013Harabasz, and multi-seed ARI stability; ties use silhouette, stability, then smaller k.",
+  "training_timestamp": "2026-08-30T07:30:48.472491+00:00",
+  "data_source": "Yahoo Finance via yfinance (^NSEI)",
+  "symbol": "^NSEI",
+  "history_start": "2017-06-20",
+  "history_end": "2026-08-27",
+  "usable_observations": 2266,
+  "training_period": {
+    "start": "2017-06-20",
+    "end": "2024-10-25",
+    "observations": 1812
+  },
+  "temporal_split_date": "2024-10-28",
+  "out_of_sample_diagnostics": {
+    "observations": 454,
+    "cluster_counts": {
+      "0": 161,
+      "1": 293,
+      "2": 0
+    },
+    "silhouette_score": 0.224477
+  }
+}

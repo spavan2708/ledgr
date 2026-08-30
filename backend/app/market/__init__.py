@@ -1,0 +1,1 @@
+"""Broad-market data adapters."""
