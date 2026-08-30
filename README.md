@@ -1,6 +1,6 @@
 # FinSync
 
-Phase 1 provides a deterministic Financial Digital Profile with a Next.js frontend and FastAPI backend. It does not use a database, authentication, AI, or ML.
+FinSync provides a deterministic Financial Digital Profile with an optional synthetic-prototype Financial Persona clustering model. Deterministic formulas and safeguards remain authoritative. The application does not use a database, authentication, LLM, or agentic workflow.
 
 ## Backend
 
@@ -15,6 +15,18 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 The API is available at `http://127.0.0.1:8000`. Existing routes remain at `GET /` and `GET /health`; profile analysis is at `POST /api/v1/profile/analyze`.
+
+## ML prototype
+
+From the repository root with the backend environment active:
+
+```bash
+python3 -m ml.training.generate_data --rows 5000
+python3 -m ml.training.train_model
+python3 -m ml.evaluation.evaluate_model
+```
+
+The generated dataset is synthetic, ignored by Git, and unsuitable for real-world accuracy claims. Training writes the reproducible pipeline and metadata to `ml/artifacts/`. If those artifacts are missing, financial analysis continues with `ml_persona.available` set to `false`.
 
 ## Frontend
 

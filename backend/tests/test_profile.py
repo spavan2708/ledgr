@@ -3,6 +3,7 @@ from copy import deepcopy
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.ml.inference import unavailable_persona
 
 client = TestClient(app)
 
@@ -45,6 +46,8 @@ def test_financially_healthy_profile() -> None:
     assert len(result["score_explanations"]) == 7
     assert result["score_name"] == "FinSync Adaptive Health Score — a proprietary educational indicator."
     assert len(result["comparative_strategies"]) == 3
+    assert "ml_persona" in result
+    assert isinstance(result["ml_persona"]["available"], bool)
 
 
 def test_expenses_greater_than_income() -> None:
@@ -148,3 +151,11 @@ def test_model_features_structure_and_normalization() -> None:
     assert features["income_stability"] == 1
     assert features["dependents"] == 0.05
     assert all(value is None or 0 <= value <= 1 for value in features.values())
+
+
+def test_profile_analysis_survives_unavailable_ml(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.financial_profile.predict_persona", lambda features: unavailable_persona())
+    result = analyze(HEALTHY_PROFILE)
+    assert result["ml_persona"]["available"] is False
+    assert result["metrics"]["investable_surplus"] == 115000
+    assert result["financial_health_score"] >= 0

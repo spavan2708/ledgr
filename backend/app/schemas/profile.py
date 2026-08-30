@@ -83,6 +83,17 @@ class ModelFeatures(BaseModel):
     investment_experience: float
 
 
+class MLPersona(BaseModel):
+    available: bool
+    model_name: str
+    model_version: str | None
+    persona: str | None
+    cluster_id: int | None
+    similarity_score: float | None = Field(default=None, ge=0, le=1)
+    key_characteristics: list[str]
+    limitations: list[str]
+
+
 class ComparativeStrategy(BaseModel):
     name: Literal["Safety First", "Balanced Progress", "Growth Focused"]
     summary: str
@@ -104,6 +115,7 @@ class FinancialProfileResponse(BaseModel):
     health_label: Literal["Needs Attention", "Developing", "Healthy", "Strong"]
     score_explanations: list[ScoreComponent]
     model_features: ModelFeatures
+    ml_persona: MLPersona
     comparative_strategies: list[ComparativeStrategy]
     positive_factors: list[str]
     risk_factors: list[str]

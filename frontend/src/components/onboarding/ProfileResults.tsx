@@ -1,7 +1,7 @@
 "use client";
 
 import { formatRupees } from "@/lib/formatters";
-import type { ComparativeStrategy, FinancialProfileResult, RatioDetail } from "@/types/financial-profile";
+import type { ComparativeStrategy, FinancialProfileResult, MLPersona, RatioDetail } from "@/types/financial-profile";
 
 interface ProfileResultsProps { result: FinancialProfileResult; onEdit: () => void; }
 
@@ -32,6 +32,8 @@ export function ProfileResults({ result, onEdit }: ProfileResultsProps) {
         </div>
         <div className="grid grid-cols-2 border-t border-white/10 sm:grid-cols-4"><PrimaryMetric label="Monthly net cash flow" value={formatRupees(metrics.net_cash_flow)} /><PrimaryMetric label="Investment capacity" value={formatRupees(metrics.estimated_monthly_investment_capacity)} /><PrimaryMetric label="Net worth" value={formatRupees(metrics.net_worth)} /><PrimaryMetric label="Emergency coverage" value={metrics.emergency_fund_coverage_months === null ? "Not available" : `${metrics.emergency_fund_coverage_months.toFixed(1)} months`} /></div>
       </section>
+
+      <MLPersonaCard persona={result.ml_persona} showDebug={showDebug} />
 
       {result.warnings.length > 0 && <aside aria-label="Important profile warnings" className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5"><h2 className="flex items-center gap-2 font-bold text-amber-200"><span aria-hidden="true">!</span> Important checks</h2><ul className="mt-2 space-y-1 text-sm leading-6 text-amber-100/80">{result.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></aside>}
 
@@ -81,6 +83,26 @@ function plainSummary(result: FinancialProfileResult): string {
   const reserveText = reserve === null ? "reserve coverage cannot be measured from the current inputs" : reserve >= 6 ? "your emergency reserve is fully funded against the six-month guideline" : `your emergency reserve covers ${reserve.toFixed(1)} months of essentials`;
   return `Your ${result.health_label.toLowerCase()} profile reflects ${cashFlow}. ${reserveText.charAt(0).toUpperCase()}${reserveText.slice(1)}.`;
 }
+
+function MLPersonaCard({ persona, showDebug }: { persona: MLPersona; showDebug: boolean }) {
+  if (!persona.available) return <aside className="mt-5 rounded-2xl border border-slate-400/15 bg-white/[0.025] p-5"><div className="flex items-center gap-3"><span className="rounded-full bg-slate-400/10 px-3 py-1 text-xs font-bold text-slate-400">Prototype ML model</span><h2 className="font-bold text-slate-200">Financial persona unavailable</h2></div><p className="mt-3 text-sm leading-6 text-slate-500">Your deterministic analysis is complete and unaffected. The optional pattern-classification model is currently unavailable.</p>{showDebug && <p className="mt-3 font-mono text-xs text-slate-600">{persona.limitations.join(" · ")}</p>}</aside>;
+  return <section className="mt-5 rounded-2xl border border-violet-400/20 bg-violet-400/[0.06] p-5 sm:p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><span className="rounded-full bg-violet-300 px-3 py-1 text-xs font-bold text-violet-950">Prototype ML model</span><p className="mt-4 text-xs font-bold uppercase tracking-wider text-violet-300">ML Financial Persona</p><h2 className="mt-1 text-2xl font-bold text-white">{persona.persona}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{personaInterpretation(persona.persona)}</p></div><ul className="space-y-2 rounded-xl bg-black/15 p-4 text-sm text-slate-300 sm:min-w-72">{persona.key_characteristics.map((item) => <li key={item} className="flex gap-2"><span className="text-violet-300" aria-hidden="true">•</span>{item}</li>)}</ul></div><p className="mt-5 border-t border-violet-300/10 pt-4 text-xs leading-5 text-slate-500">Comparative pattern classification trained on synthetic prototype profiles. It does not change FinSync’s deterministic metrics, score, safeguards, or suggested strategy.</p>{showDebug && <dl className="mt-4 grid gap-2 rounded-xl bg-black/20 p-4 text-xs sm:grid-cols-4"><DebugItem label="Model" value={persona.model_name} /><DebugItem label="Version" value={persona.model_version ?? "unknown"} /><DebugItem label="Cluster" value={String(persona.cluster_id)} /><DebugItem label="Similarity (not probability)" value={persona.similarity_score?.toFixed(4) ?? "unavailable"} /></dl>}</section>;
+}
+
+function personaInterpretation(persona: string | null): string {
+  const interpretations: Record<string, string> = {
+    "Liquidity-Constrained Planner": "Your pattern is most similar to profiles prioritizing accessible reserves and near-term financial flexibility.",
+    "Debt-Priority Rebuilder": "Your pattern is most similar to profiles balancing recurring debt pressure with balance-sheet rebuilding.",
+    "Balanced Wealth Builder": "Your pattern is most similar to profiles with broadly balanced saving, liquidity, debt, and long-term readiness.",
+    "Long-Horizon Growth Builder": "Your pattern is most similar to profiles combining a longer horizon with stronger saving and investment readiness.",
+    "High-Income Low-Savings Planner": "Your pattern is most similar to stable-income profiles whose current outflows limit savings conversion.",
+    "Early-Stage Foundation Builder": "Your pattern is most similar to profiles still establishing savings, solvency, and investment experience.",
+    "Resilient Conservative Saver": "Your pattern is most similar to reserve-focused profiles emphasizing stability and financial resilience.",
+  };
+  return interpretations[persona ?? ""] ?? "Your reported features align most closely with this synthetic prototype pattern.";
+}
+
+function DebugItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-slate-600">{label}</dt><dd className="mt-1 font-mono text-slate-300">{value}</dd></div>; }
 
 function SectionHeader({ title, description }: { title: string; description: string }) { return <header className="mb-5"><h2 className="text-2xl font-bold text-white sm:text-3xl">{title}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{description}</p></header>; }
 function PrimaryMetric({ label, value }: { label: string; value: string }) { return <div className="border-white/10 p-4 even:border-l sm:border-l sm:first:border-l-0 sm:p-5"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 break-words text-base font-bold text-white sm:text-lg">{value}</p></div>; }

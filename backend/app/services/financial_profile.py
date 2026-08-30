@@ -7,6 +7,7 @@ from app.schemas.profile import (
     RatioDetail,
     ScoreComponent,
 )
+from app.ml.inference import predict_persona
 
 RATIO_DISCLAIMER = "Reference ranges are general educational guidelines and may vary by household, goal, location, and professional methodology."
 
@@ -142,6 +143,8 @@ def analyze_financial_profile(profile: FinancialProfileRequest) -> FinancialProf
     if profile.monthly_debt_payments > obligations: warnings.append("Monthly debt payments exceed broader financial obligations; verify that obligations include debt payments.")
     if profile.outstanding_debt != liabilities: warnings.append("Outstanding debt and total liabilities differ; total liabilities are used for balance-sheet ratios.")
 
+    model_features = ModelFeatures(savings_ratio=_normalized(savings_ratio), expense_ratio=_normalized(expense_ratio), debt_service_ratio=_normalized(debt_service_ratio), debt_to_asset_ratio=_normalized(debt_to_asset), solvency_ratio=_normalized(solvency), liquidity_months=_normalized(liquidity, 12), emergency_fund_months=_normalized(emergency_coverage, 12), income_stability=profile.income_stability / 5, dependents=profile.dependents / 20, investment_horizon_years=profile.investment_horizon_years / 60, volatility_comfort=profile.volatility_comfort / 5, investment_experience=profile.investment_experience / 5)
+
     return FinancialProfileResponse(
         profile=profile,
         metrics=FinancialMetrics(net_cash_flow=round(net_cash_flow, 2), investable_surplus=round(net_cash_flow, 2), savings_ratio=_rounded(savings_ratio), expense_ratio=_rounded(expense_ratio), debt_service_ratio=_rounded(debt_service_ratio), debt_to_asset_ratio=_rounded(debt_to_asset), solvency_ratio=_rounded(solvency), liquidity_ratio=_rounded(liquidity, 2), emergency_fund_coverage_months=_rounded(emergency_coverage, 2), net_worth=round(net_worth, 2), estimated_monthly_investment_capacity=round(capacity, 2), expense_to_income_ratio=_rounded(expense_ratio), debt_to_income_ratio=_rounded(debt_service_ratio), savings_rate=_rounded(savings_ratio)),
@@ -150,7 +153,8 @@ def analyze_financial_profile(profile: FinancialProfileRequest) -> FinancialProf
         score_name="FinSync Adaptive Health Score — a proprietary educational indicator.",
         health_label=label,
         score_explanations=components,
-        model_features=ModelFeatures(savings_ratio=_normalized(savings_ratio), expense_ratio=_normalized(expense_ratio), debt_service_ratio=_normalized(debt_service_ratio), debt_to_asset_ratio=_normalized(debt_to_asset), solvency_ratio=_normalized(solvency), liquidity_months=_normalized(liquidity, 12), emergency_fund_months=_normalized(emergency_coverage, 12), income_stability=profile.income_stability / 5, dependents=profile.dependents / 20, investment_horizon_years=profile.investment_horizon_years / 60, volatility_comfort=profile.volatility_comfort / 5, investment_experience=profile.investment_experience / 5),
+        model_features=model_features,
+        ml_persona=predict_persona(model_features),
         comparative_strategies=_build_strategies(capacity, emergency_coverage, debt_service_ratio, net_worth),
         positive_factors=positives, risk_factors=risks, suggested_next_actions=list(dict.fromkeys(actions)), warnings=warnings,
     )
