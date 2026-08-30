@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.profile import router as profile_router
 from app.api.v1.market import router as market_router
+from app.api.v1.goals import router as goals_router
 
 app = FastAPI(
     title="FinSync API",
@@ -20,6 +21,7 @@ app.add_middleware(
 
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(market_router, prefix="/api/v1")
+app.include_router(goals_router, prefix="/api/v1")
 
 
 @app.get("/")

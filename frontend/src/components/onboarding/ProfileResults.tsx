@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { formatRupees } from "@/lib/formatters";
 import type { ComparativeStrategy, FinancialProfileResult, MLPersona, RatioDetail } from "@/types/financial-profile";
 import { MarketContextCard } from "./MarketContextCard";
@@ -40,6 +41,7 @@ export function ProfileResults({ result, onEdit }: ProfileResultsProps) {
       {result.warnings.length > 0 && <aside aria-label="Important profile warnings" className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5"><h2 className="flex items-center gap-2 font-bold text-amber-200"><span aria-hidden="true">!</span> Important checks</h2><ul className="mt-2 space-y-1 text-sm leading-6 text-amber-100/80">{result.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></aside>}
 
       <section className="mt-6 grid gap-3 md:grid-cols-3"><Highlight label="Biggest strength" text={strength} tone="positive" /><Highlight label="Most important concern" text={concern} tone="concern" /><Highlight label="Immediate action" text={immediateAction} tone="action" /></section>
+      <section className="mt-6 flex flex-col justify-between gap-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 sm:flex-row sm:items-center"><div><h2 className="font-bold text-white">Ready to test your goals?</h2><p className="mt-1 text-sm text-slate-400">Use your estimated {formatRupees(metrics.estimated_monthly_investment_capacity)} monthly capacity in the goal simulator.</p></div><Link href={`/goals?capacity=${metrics.estimated_monthly_investment_capacity}`} className="primary-button justify-center">Plan Your Goals →</Link></section>
 
       <section className="mt-12">
         <SectionHeader title="Suggested starting point" description="A deterministic scenario selected from your reserve coverage, debt service, net worth, and reported preferences." />
