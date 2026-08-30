@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { formatRupees } from "@/lib/formatters";
 import type { GoalInput, GoalSimulationResponse, ScenarioAssumptions } from "@/types/goals";
 import { GoalEditor } from "./GoalEditor";
 import { GoalResultCard } from "./GoalResultCard";
+import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 
 const DEFAULT_ASSUMPTIONS: ScenarioAssumptions = { conservative: { nominal_annual_return: 4, annual_volatility: 8, inflation_rate: 6 }, base: { nominal_annual_return: 8, annual_volatility: 15, inflation_rate: 5 }, optimistic: { nominal_annual_return: 12, annual_volatility: 22, inflation_rate: 4 } };
 const DEMO_GOALS: GoalInput[] = [
@@ -14,15 +15,24 @@ const DEMO_GOALS: GoalInput[] = [
   { id: "wealth-demo", name: "Long-term wealth", category: "wealth_creation", target_amount: 10000000, amount_basis: "future_value", current_saved: 300000, horizon_months: 240, priority: "medium", flexibility: "flexible", planned_monthly_contribution: 15000, annual_step_up_percentage: 10 },
 ];
 
-export function GoalPlanner({ initialCapacity }: { initialCapacity: number }) {
-  const [capacity, setCapacity] = useState(Math.max(0, initialCapacity));
-  const [goals, setGoals] = useState<GoalInput[]>(DEMO_GOALS);
+export function GoalPlanner() {
+  const { session, setGoals: saveGoals } = useFinSyncSession();
+  const [capacity, setCapacity] = useState(Math.max(0, session?.declared_monthly_capacity ?? session?.profile_analysis?.metrics.estimated_monthly_investment_capacity ?? 0));
+  const [goals, setGoals] = useState<GoalInput[]>(session?.goals.length ? session.goals : DEMO_GOALS);
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(DEFAULT_ASSUMPTIONS);
   const [monteCarlo, setMonteCarlo] = useState(true);
   const [simulationCount, setSimulationCount] = useState(1000);
   const [result, setResult] = useState<GoalSimulationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (!session) return;
+    // Session storage hydrates after the server render; mirror that external state once available.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCapacity(Math.max(0, session.declared_monthly_capacity ?? session.profile_analysis?.metrics.estimated_monthly_investment_capacity ?? 0));
+    if (session.goals.length) setGoals(session.goals);
+    if (session.goal_simulation) setResult(session.goal_simulation);
+  }, [session]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setLoading(true); setError("");
@@ -30,7 +40,7 @@ export function GoalPlanner({ initialCapacity }: { initialCapacity: number }) {
       const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
       const response = await fetch(`${baseUrl}/api/v1/goals/simulate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estimated_monthly_capacity: capacity, goals, assumptions, monte_carlo_enabled: monteCarlo, simulation_count: simulationCount, seed: 20260830 }) });
       if (!response.ok) { const body: unknown = await response.json().catch(() => null); throw new Error(apiError(body)); }
-      setResult((await response.json()) as GoalSimulationResponse); window.scrollTo({ top: 0, behavior: "smooth" });
+      const simulation = (await response.json()) as GoalSimulationResponse; setResult(simulation); saveGoals(goals, simulation); window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Goal simulation failed."); }
     finally { setLoading(false); }
   };

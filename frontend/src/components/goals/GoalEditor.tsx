@@ -19,5 +19,5 @@ export function GoalEditor({ goal, index, onChange, onRemove, removable }: { goa
 }
 
 function Field({ label: text, children }: { label: string; children: React.ReactNode }) { return <label className="block text-sm font-semibold text-slate-300"><span className="mb-2 block">{text}</span>{children}</label>; }
-function Money({ label: text, value, onChange, min = 0 }: { label: string; value: number; onChange: (value: number) => void; min?: number }) { return <Field label={text}><div className="goal-prefix"><span>₹</span><input required type="number" min={min} step={100} value={value} onChange={(event) => onChange(Number(event.target.value))} className="goal-input !border-0" /></div></Field>; }
+function Money({ label: text, value, onChange, min = 0 }: { label: string; value: number; onChange: (value: number) => void; min?: number }) { return <Field label={text}><div className="goal-prefix"><span>₹</span><input required type="number" min={min} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))} className="goal-input !border-0" /></div></Field>; }
 const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());

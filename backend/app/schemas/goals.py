@@ -7,6 +7,7 @@ GoalCategory = Literal["emergency_reserve", "education", "vehicle", "house", "tr
 Priority = Literal["essential", "high", "medium", "low"]
 Flexibility = Literal["fixed", "somewhat_flexible", "flexible"]
 GoalStatus = Literal["already_funded", "on_track", "needs_adjustment", "currently_unfeasible"]
+CapacityStatus = Literal["funded", "partially_funded", "unfunded"]
 
 
 class GoalInput(BaseModel):
@@ -108,6 +109,10 @@ class GoalResult(BaseModel):
     monte_carlo: MonteCarloResult | None
     explanations: list[str]
     warnings: list[str]
+    assigned_monthly_capacity: float = 0
+    monthly_capacity_gap: float = 0
+    capacity_status: CapacityStatus = "unfunded"
+    allocated_capacity_projected_value: float = 0
 
 
 class CapacityAllocation(BaseModel):
