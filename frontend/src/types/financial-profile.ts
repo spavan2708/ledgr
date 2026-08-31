@@ -1,24 +1,56 @@
-export interface FinancialProfile {
-  name: string;
-  age: number;
-  occupation: string;
-  monthly_income: number;
-  monthly_essential_expenses: number;
-  monthly_financial_obligations: number;
-  monthly_debt_payments: number;
-  current_savings: number;
-  emergency_fund: number;
-  outstanding_debt: number;
-  total_assets: number;
-  liquid_assets: number;
-  total_liabilities: number;
-  dependents: number;
-  income_stability: number;
-  investment_experience: number;
-  investment_horizon_years: number;
-  volatility_comfort: number;
-  additional_context?: string;
+﻿export interface FinancialProfile {
+  personal: {
+    age: number;
+    occupation: string;
+    dependents: number;
+  };
+  cash_flow: {
+    monthly_take_home_income: number;
+    other_monthly_income: number;
+    // Essential expenses breakdown
+    housing: number;
+    food: number;
+    utilities: number;
+    transport: number;
+    insurance: number;
+    healthcare: number;
+    other_essential: number;
+    // Discretionary expenses breakdown
+    shopping: number;
+    dining_out: number;
+    entertainment: number;
+    subscriptions: number;
+    travel_leisure: number;
+    other_discretionary: number;
+    // Financial commitments
+    monthly_debt_payments: number;
+    existing_monthly_investments: number;
+  };
+  assets: {
+    cash_bank: number;
+    fd: number;
+    mutual_funds: number;
+    stocks_equity: number;
+    bonds_debt: number;
+    gold: number;
+    other_assets: number;
+  };
+  liabilities: {
+    outstanding_loans: number;
+    other_liabilities: number;
+  };
+  safety: {
+    emergency_savings: number;
+  };
+  risk: {
+    investment_experience: string;
+    market_loss_reaction: string;
+    investment_horizon: string;
+    income_stability: number;
+  };
 }
+
+// Backend analysis types (retained for later phases)
 
 export interface FinancialMetrics {
   net_cash_flow: number;
@@ -117,7 +149,7 @@ export interface FinancialProfileResult {
   metrics: FinancialMetrics;
   ratios: RatioDetail[];
   financial_health_score: number;
-  score_name: "FinSync Adaptive Health Score — a proprietary educational indicator.";
+  score_name: "FinSync Adaptive Health Score \u2014 a proprietary educational indicator.";
   health_label: "Needs Attention" | "Developing" | "Healthy" | "Strong";
   score_explanations: ScoreComponent[];
   model_features: ModelFeatures;
@@ -128,6 +160,3 @@ export interface FinancialProfileResult {
   suggested_next_actions: string[];
   warnings: string[];
 }
-
-export type ProfileField = keyof FinancialProfile;
-export type ProfileErrors = Partial<Record<ProfileField, string>>;

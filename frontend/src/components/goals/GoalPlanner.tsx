@@ -7,6 +7,7 @@ import type { GoalInput, GoalSimulationResponse, ScenarioAssumptions } from "@/t
 import { GoalEditor } from "./GoalEditor";
 import { GoalResultCard } from "./GoalResultCard";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
+import { simulateGoals } from "@/lib/financial/goals";
 
 const DEFAULT_ASSUMPTIONS: ScenarioAssumptions = { conservative: { nominal_annual_return: 4, annual_volatility: 8, inflation_rate: 6 }, base: { nominal_annual_return: 8, annual_volatility: 15, inflation_rate: 5 }, optimistic: { nominal_annual_return: 12, annual_volatility: 22, inflation_rate: 4 } };
 const DEMO_GOALS: GoalInput[] = [
@@ -35,19 +36,41 @@ export function GoalPlanner() {
   }, [session]);
 
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); setLoading(true); setError("");
+    event.preventDefault(); 
+    setLoading(true); 
+    setError("");
     try {
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
-      const response = await fetch(`${baseUrl}/api/v1/goals/simulate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estimated_monthly_capacity: capacity, goals, assumptions, monte_carlo_enabled: monteCarlo, simulation_count: simulationCount, seed: 20260830 }) });
-      if (!response.ok) { const body: unknown = await response.json().catch(() => null); throw new Error(apiError(body)); }
-      const simulation = (await response.json()) as GoalSimulationResponse; setResult(simulation); saveGoals(goals, simulation); window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Goal simulation failed."); }
-    finally { setLoading(false); }
+      // Validate goals before running simulation
+      for (const goal of goals) {
+        if (!goal.name || goal.name.trim() === "") throw new Error("Goal name cannot be empty.");
+        if (goal.target_amount <= 0) throw new Error(`Target amount for '${goal.name}' must be greater than 0.`);
+        if (goal.current_saved < 0) throw new Error(`Already saved amount for '${goal.name}' cannot be negative.`);
+        if (goal.horizon_months <= 0) throw new Error(`Timeline for '${goal.name}' must be greater than 0 months.`);
+        if (goal.planned_monthly_contribution < 0) throw new Error(`Monthly contribution for '${goal.name}' cannot be negative.`);
+        if (goal.annual_step_up_percentage < 0) throw new Error(`Annual step-up for '${goal.name}' cannot be negative.`);
+        if (goal.inflation_rate !== undefined && goal.inflation_rate < 0) throw new Error(`Inflation rate for '${goal.name}' cannot be negative.`);
+        
+        // Let's warn but not throw if current_saved exceeds target for Future Value logic to avoid blocking them if they over-saved.
+      }
+
+      // We use a small setTimeout to allow the UI to show the "Running scenarios..." loading state briefly, 
+      // especially since Monte Carlo can take a few milliseconds.
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const simulation = simulateGoals(goals, capacity, assumptions, monteCarlo, simulationCount);
+      setResult(simulation); 
+      saveGoals(goals, simulation); 
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (requestError) { 
+      setError(requestError instanceof Error ? requestError.message : "Goal simulation failed."); 
+    } finally { 
+      setLoading(false); 
+    }
   };
   const updateGoal = (index: number, goal: GoalInput) => setGoals((current) => current.map((item, itemIndex) => itemIndex === index ? goal : item));
   const addGoal = () => setGoals((current) => [...current, { id: `goal-${Date.now()}`, name: "New goal", category: "custom", target_amount: 500000, amount_basis: "today_value", current_saved: 0, horizon_months: 60, priority: "medium", flexibility: "somewhat_flexible", planned_monthly_contribution: 5000, annual_step_up_percentage: 5 }]);
 
-  return <div className="mx-auto w-full max-w-6xl"><header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><Link href="/onboarding" className="text-sm font-semibold text-emerald-300">← Financial profile</Link><p className="eyebrow mt-5">Deterministic goal planning</p><h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">Turn goals into testable plans.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Compare scenarios, adjust timelines and contributions, and see how multiple goals fit within monthly capacity.</p></div>{result && <button type="button" onClick={() => setResult(null)} className="secondary-button">Edit assumptions</button>}</header><p className="mb-6 rounded-xl border border-sky-400/15 bg-sky-400/5 p-4 text-xs leading-5 text-sky-200/70">Prototype goal data lives only in this page&apos;s current browser state and is cleared when the page/session ends. It is not permanently saved.</p>
+  return <div className="mx-auto w-full max-w-6xl"><header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><Link href="/onboarding" className="text-sm font-semibold text-emerald-300">← Financial profile</Link><p className="eyebrow mt-5">Deterministic goal planning</p><h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">Turn goals into testable plans.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Compare scenarios, adjust timelines and contributions, and see how multiple goals fit within monthly capacity.</p></div>{result && <button type="button" onClick={() => setResult(null)} className="secondary-button">Edit assumptions</button>}</header><p className="mb-6 rounded-xl border border-sky-400/15 bg-sky-400/5 p-4 text-xs leading-5 text-sky-200/70">Goals are seamlessly integrated with your financial profile. Simulating these goals will save them to your session and influence your final allocation plan.</p>
     {result ? <Results result={result} onEditGoal={() => setResult(null)} /> : <form onSubmit={submit} className="space-y-6"><section className="onboarding-card"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><label className="block max-w-sm text-sm font-semibold text-slate-300"><span className="mb-2 block">Estimated monthly investment capacity</span><div className="goal-prefix"><span>₹</span><input type="number" min={0} required value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} className="goal-input !border-0" /></div><small>Pre-filled from your profile when available.</small></label><div className="text-sm text-slate-500">Current planned total <strong className="text-slate-200">{formatRupees(goals.reduce((sum, goal) => sum + goal.planned_monthly_contribution, 0))}</strong></div></div></section>{goals.map((goal, index) => <GoalEditor key={goal.id} goal={goal} index={index} onChange={(updated) => updateGoal(index, updated)} onRemove={() => setGoals((current) => current.filter((_, itemIndex) => itemIndex !== index))} removable={goals.length > 1} />)}<button type="button" onClick={addGoal} className="secondary-button">＋ Add another goal</button><AssumptionEditor assumptions={assumptions} onChange={setAssumptions} monteCarlo={monteCarlo} setMonteCarlo={setMonteCarlo} count={simulationCount} setCount={setSimulationCount} />{error && <div role="alert" className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div>}<div className="flex justify-end"><button type="submit" disabled={loading} className="primary-button !px-6 !py-4 disabled:cursor-wait disabled:opacity-60">{loading ? "Running scenarios…" : "Simulate all goals"}</button></div></form>}
     <footer className="mx-auto mt-8 max-w-3xl border-t border-white/10 pt-6 text-center text-xs leading-5 text-slate-600">Hypothetical educational projections only—not forecasts, guaranteed outcomes, or regulated investment advice. Taxes, fees and product constraints are excluded.</footer></div>;
 }

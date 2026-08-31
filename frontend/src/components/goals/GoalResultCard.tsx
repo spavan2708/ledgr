@@ -2,14 +2,28 @@ import { formatRupees } from "@/lib/formatters";
 import type { GoalResult } from "@/types/goals";
 
 export function GoalResultCard({ goal }: { goal: GoalResult }) {
-  const status = { already_funded: "Already funded", on_track: "Individually on track", needs_adjustment: "Individually needs adjustment", currently_unfeasible: "Individually unfeasible" }[goal.status];
-  const capacity = goal.capacity_status === "funded" ? "Fully funded within combined capacity" : goal.capacity_status === "partially_funded" ? "Not fully funded within combined capacity" : "Currently unfunded within available capacity";
+  const status = { 
+    already_funded: "Target Reached (Already Saved)", 
+    on_track: "Individually Feasible", 
+    needs_adjustment: "Individually Underfunded", 
+    currently_unfeasible: "Individually Underfunded" 
+  }[goal.status];
+
+  // Only consider it 'Fundable' if the assigned capacity actually reaches the target
+  const isFundableThroughCapacity = goal.allocated_capacity_projected_value >= goal.inflation_adjusted_target;
+  
+  const capacity = goal.capacity_status === "funded" || isFundableThroughCapacity
+    ? (isFundableThroughCapacity ? "Fundable Through Combined Capacity" : "Underfunded Even With Available Capacity")
+    : "Underfunded Due To Capacity Limits";
+    
   const explanations = goal.explanations.filter((item) => item.trim().length > 0);
   return <article className="result-card">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-xl font-bold text-white">{goal.name}</h3><p className="mt-1 text-xs text-slate-500">{(goal.horizon_months / 12).toFixed(1)} years · {goal.category.replaceAll("_", " ")}</p></div><span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">{status}</span></div>
-    <p className={`mt-3 text-sm font-semibold ${goal.capacity_status === "funded" ? "text-emerald-300" : "text-amber-300"}`}>{capacity}</p>
-    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Planned contribution" value={formatRupees(goal.planned_monthly_contribution)} /><Metric label="Required contribution" value={formatRupees(goal.required_monthly_contribution)} /><Metric label="Assigned capacity" value={formatRupees(goal.assigned_monthly_capacity)} /><Metric label="Monthly capacity gap" value={formatRupees(goal.monthly_capacity_gap)} /></div>
-    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Full-plan projection" value={formatRupees(goal.projected_value)} /><Metric label="Allocated-capacity projection" value={formatRupees(goal.allocated_capacity_projected_value)} /><Metric label="Adjusted target" value={formatRupees(goal.inflation_adjusted_target)} /><Metric label={goal.funding_gap_or_surplus >= 0 ? "Full-plan surplus" : "Full-plan gap"} value={formatRupees(Math.abs(goal.funding_gap_or_surplus))} /></div>
+    <p className={`mt-3 text-sm font-semibold ${isFundableThroughCapacity ? "text-emerald-300" : "text-amber-300"}`}>{capacity}</p>
+    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="User planned contribution" value={formatRupees(goal.planned_monthly_contribution)} /><Metric label="Required contribution" value={formatRupees(goal.required_monthly_contribution)} /><Metric label="System assigned capacity" value={formatRupees(goal.assigned_monthly_capacity)} /><Metric label="Monthly capacity gap" value={formatRupees(goal.monthly_capacity_gap)} /></div>
+    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Projected value (if fully funded)" value={formatRupees(goal.projected_value)} /><Metric label="Projected value (with assigned capacity)" value={formatRupees(goal.allocated_capacity_projected_value)} />
+      <div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-slate-600">Inflation-adjusted target</p><p className="mt-1 font-bold text-slate-200">{formatRupees(goal.inflation_adjusted_target)}</p><p className="text-[10px] text-slate-500 mt-1 leading-tight">Original target adjusted for inflation if applicable.</p></div>
+      <Metric label={goal.funding_gap_or_surplus >= 0 ? "Surplus (if fully funded)" : "Shortfall (if fully funded)"} value={formatRupees(Math.abs(goal.funding_gap_or_surplus))} /></div>
     <p className="mt-3 text-xs text-slate-500">The individual projection assumes the full planned contribution. The allocated projection uses only capacity assigned across all goals.</p>
     <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]"><LineChart goal={goal} /><div><h4 className="text-sm font-bold text-white">Scenario comparison</h4><div className="mt-3 space-y-2">{goal.scenarios.map((scenario) => <div key={scenario.scenario} className="flex justify-between rounded-xl bg-black/20 p-3 text-sm"><span className="capitalize text-slate-400">{scenario.scenario}</span><span className="font-semibold text-slate-200">{formatRupees(scenario.projected_value)}</span></div>)}</div>{goal.monte_carlo && <MonteCarlo result={goal.monte_carlo} />}</div></div>
     {explanations.length > 0 && <details className="mt-5 border-t border-white/10 pt-4"><summary className="cursor-pointer text-sm font-semibold text-slate-400">Formulas and calculation details</summary><ul className="mt-3 space-y-2 text-xs leading-5 text-slate-500">{explanations.map((item) => <li key={item}>• {item}</li>)}</ul></details>}
@@ -18,4 +32,4 @@ export function GoalResultCard({ goal }: { goal: GoalResult }) {
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-slate-600">{label}</p><p className="mt-1 font-bold text-slate-200">{value}</p></div>; }
 function LineChart({ goal }: { goal: GoalResult }) { const sampled = goal.timeline.filter((_, i) => i % Math.max(1, Math.floor(goal.timeline.length / 24)) === 0 || i === goal.timeline.length - 1); const max = Math.max(goal.inflation_adjusted_target, ...sampled.map((p) => p.projected_value), 1); const points = sampled.map((p, i) => `${(i / Math.max(1, sampled.length - 1)) * 100},${100 - (p.projected_value / max) * 90}`).join(" "); return <figure><figcaption className="mb-3 text-sm font-bold text-white">Full planned-contribution projection</figcaption><svg role="img" aria-label={`Projected value timeline for ${goal.name}`} viewBox="0 0 100 105" className="h-52 w-full rounded-xl bg-black/20 p-3" preserveAspectRatio="none"><polyline fill="none" stroke="#34d399" strokeWidth="2" points={points} vectorEffect="non-scaling-stroke" /></svg></figure>; }
-function MonteCarlo({ result }: { result: NonNullable<GoalResult["monte_carlo"]> }) { return <div className="mt-5 border-t border-white/10 pt-4"><h4 className="text-sm font-bold text-white">Generated-scenario range</h4><p className="mt-2 text-xs text-slate-400">P10 {formatRupees(result.p10)} · P50 {formatRupees(result.p50)} · P90 {formatRupees(result.p90)}</p><p className="mt-2 text-xs text-slate-500">{result.attainment_frequency_percentage.toFixed(1)}% — {result.attainment_frequency_label}</p></div>; }
+function MonteCarlo({ result }: { result: NonNullable<GoalResult["monte_carlo"]> }) { return <div className="mt-5 border-t border-white/10 pt-4"><h4 className="text-sm font-bold text-white">Generated-scenario range</h4><p className="mt-2 text-xs text-slate-400">P10 {formatRupees(result.p10)} · P50 {formatRupees(result.p50)} · P90 {formatRupees(result.p90)}</p><p className="mt-2 text-xs text-emerald-300 font-semibold">Probability of reaching target: {result.attainment_frequency_percentage.toFixed(1)}%</p></div>; }

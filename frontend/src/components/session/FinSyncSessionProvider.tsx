@@ -9,11 +9,13 @@ import type { AccountProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/client";
 import { getAccountProfile } from "@/lib/supabase/profile";
 
+import type { FinancialPlan } from "@/types/financial-plan";
+
 const STORAGE_KEY = "finsync.session.v1";
 export const FINSYNC_STORAGE_KEYS = [STORAGE_KEY];
-const empty = (): FinSyncSession => ({ version: 1, session_id: crypto.randomUUID(), profile_input: null, profile_analysis: null, declared_monthly_capacity: null, goals: [], goal_simulation: null, conversation: [], proposals: [] });
+const empty = (): FinSyncSession => ({ version: 1, session_id: crypto.randomUUID(), profile_input: null, profile_analysis: null, financial_plan: null, declared_monthly_capacity: null, goals: [], goal_simulation: null, conversation: [], proposals: [] });
 
-interface Value { session: FinSyncSession | null; user: User | null; accountProfile: AccountProfile | null; setProfile: (input: FinancialProfile, analysis: FinancialProfileResult) => void; setGoals: (goals: GoalInput[], result: GoalSimulationResponse) => void; addMessage: (message: ConversationMessage) => void; applyProposal: (proposal: AgentProposal, context?: SessionContext) => void; clearSession: () => void; refreshAccount: () => Promise<void>; }
+interface Value { session: FinSyncSession | null; user: User | null; accountProfile: AccountProfile | null; setProfile: (input: FinancialProfile, plan?: FinancialPlan | null, analysis?: FinancialProfileResult | null) => void; setGoals: (goals: GoalInput[], result: GoalSimulationResponse) => void; addMessage: (message: ConversationMessage) => void; applyProposal: (proposal: AgentProposal, context?: SessionContext) => void; clearSession: () => void; refreshAccount: () => Promise<void>; }
 const Context = createContext<Value | null>(null);
 
 export function FinSyncSessionProvider({ children }: { children: ReactNode }) {
@@ -31,7 +33,7 @@ export function FinSyncSessionProvider({ children }: { children: ReactNode }) {
     void refreshAccount();
   }, [refreshAccount]);
   useEffect(() => { if (session) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session)); }, [session]);
-  const setProfile = useCallback((input: FinancialProfile, analysis: FinancialProfileResult) => setSession((s) => ({ ...(s ?? empty()), profile_input: input, profile_analysis: analysis, declared_monthly_capacity: s?.declared_monthly_capacity ?? analysis.metrics.estimated_monthly_investment_capacity })), []);
+  const setProfile = useCallback((input: FinancialProfile, plan?: FinancialPlan | null, analysis?: FinancialProfileResult | null) => setSession((s) => ({ ...(s ?? empty()), profile_input: input, financial_plan: plan ?? null, profile_analysis: analysis ?? null, declared_monthly_capacity: s?.declared_monthly_capacity ?? plan?.recommendations.investableMonthlyAmount ?? analysis?.metrics.estimated_monthly_investment_capacity ?? null })), []);
   const setGoals = useCallback((goals: GoalInput[], result: GoalSimulationResponse) => setSession((s) => ({ ...(s ?? empty()), goals, goal_simulation: result })), []);
   const addMessage = useCallback((message: ConversationMessage) => setSession((s) => ({ ...(s ?? empty()), conversation: [...(s?.conversation ?? []), message], proposals: message.proposal ? [...(s?.proposals ?? []), message.proposal] : s?.proposals ?? [] })), []);
   const applyProposal = useCallback((proposal: AgentProposal, context?: SessionContext) => setSession((s) => ({ ...(s ?? empty()), ...(context ?? {}), proposals: (s?.proposals ?? []).map((p) => p.id === proposal.id ? proposal : p), conversation: (s?.conversation ?? []).map((m) => m.proposal?.id === proposal.id ? { ...m, proposal } : m) })), []);
@@ -39,3 +41,4 @@ export function FinSyncSessionProvider({ children }: { children: ReactNode }) {
   return <Context.Provider key={session?.session_id} value={{ session, user, accountProfile, setProfile, setGoals, addMessage, applyProposal, clearSession, refreshAccount }}>{children}</Context.Provider>;
 }
 export function useFinSyncSession() { const value = useContext(Context); if (!value) throw new Error("FinSync session provider is missing"); return value; }
+
