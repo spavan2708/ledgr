@@ -1,0 +1,66 @@
+import pandas as pd
+
+def create_manual_cases():
+    cases = [
+        # 1. High income but extremely high debt -> DTI > 0.5 -> Conservative
+        ["Edge 1: High Income High Debt", 200000, 50000, 30000, 110000, 1500000, 2000000, 500000, 1.0, 500000, 10, 0, 90, 0, 0, 0, 10000, 0.55, 0.75, 2, 1, 60, 500000, 50, "Conservative"],
+        
+        # 2. Low income but very strong savings -> EF >= 6 -> Aggressive
+        ["Edge 2: Low Income Strong Savings", 30000, 15000, 5000, 0, 0, 500000, 300000, 20.0, 200000, 40, 60, 0, 0, 0, 0, 10000, 0.0, 0.0, 1, 0, 120, 100000, 75, "Aggressive"],
+        
+        # 3. High surplus but very short goal horizon -> Horizon < 36 -> Conservative
+        ["Edge 3: High Surplus Short Horizon", 150000, 40000, 20000, 0, 0, 200000, 200000, 5.0, 0, 100, 0, 0, 0, 0, 0, 90000, 0.0, 0.0, 3, 3, 12, 1000000, 10, "Conservative"],
+        
+        # 4. Very long horizon but poor emergency fund -> EF < 1.5 -> Conservative
+        ["Edge 4: Long Horizon Poor EF", 80000, 50000, 20000, 10000, 100000, 20000, 20000, 0.33, 0, 100, 0, 0, 0, 0, 0, 0, 0.125, 5.0, 1, 0, 300, 200000, 50, "Conservative"],
+        
+        # 5. Moderate income, excellent EF, low debt -> Balanced/Aggressive -> Aggressive
+        ["Edge 5: Mod Income, Excel EF, No Debt", 70000, 30000, 15000, 0, 0, 400000, 300000, 10.0, 100000, 50, 0, 0, 50, 0, 0, 25000, 0.0, 0.0, 2, 0, 120, 100000, 80, "Aggressive"],
+        
+        # 6. High existing equity but low capacity (EF<1.5, High DTI) -> Conservative
+        ["Edge 6: High Equity Low Capacity", 60000, 40000, 10000, 15000, 500000, 100000, 10000, 0.18, 90000, 0, 0, 0, 0, 100, 0, -5000, 0.25, 5.0, 2, 1, 48, 500000, 20, "Conservative"],
+        
+        # 7. Low existing equity but strong capacity -> Aggressive
+        ["Edge 7: Low Equity Strong Capacity", 120000, 40000, 20000, 0, 0, 800000, 600000, 15.0, 200000, 80, 20, 0, 0, 0, 0, 60000, 0.0, 0.0, 3, 1, 180, 2000000, 80, "Aggressive"],
+        
+        # Normal 8. Clear Conservative 1
+        ["Normal 8: Clear Conservative 1", 40000, 30000, 5000, 5000, 50000, 20000, 10000, 0.28, 10000, 100, 0, 0, 0, 0, 0, 0, 0.125, 2.5, 1, 1, 24, 100000, 50, "Conservative"],
+        
+        # Normal 9. Clear Conservative 2
+        ["Normal 9: Clear Conservative 2", 50000, 40000, 5000, 10000, 200000, 30000, 20000, 0.4, 10000, 80, 20, 0, 0, 0, 0, -5000, 0.2, 6.66, 2, 2, 36, 300000, 20, "Conservative"],
+        
+        # Normal 10. Clear Balanced 1
+        ["Normal 10: Clear Balanced 1", 80000, 40000, 15000, 5000, 100000, 250000, 150000, 3.33, 100000, 40, 20, 10, 20, 10, 0, 20000, 0.06, 0.4, 2, 1, 84, 500000, 60, "Balanced"],
+        
+        # Normal 11. Clear Balanced 2
+        ["Normal 11: Clear Balanced 2", 95000, 50000, 20000, 10000, 150000, 300000, 180000, 3.0, 120000, 30, 30, 10, 20, 10, 0, 15000, 0.1, 0.5, 3, 1, 96, 800000, 50, "Balanced"],
+        
+        # Normal 12. Clear Balanced 3
+        ["Normal 12: Clear Balanced 3", 60000, 30000, 10000, 5000, 50000, 200000, 120000, 3.42, 80000, 50, 20, 10, 20, 0, 0, 15000, 0.08, 0.25, 2, 0, 72, 300000, 70, "Balanced"],
+        
+        # Normal 13. Clear Aggressive 1
+        ["Normal 13: Clear Aggressive 1", 150000, 50000, 30000, 0, 0, 1000000, 400000, 8.0, 600000, 10, 0, 0, 30, 60, 0, 70000, 0.0, 0.0, 4, 1, 240, 5000000, 90, "Aggressive"],
+        
+        # Normal 14. Clear Aggressive 2
+        ["Normal 14: Clear Aggressive 2", 200000, 60000, 40000, 10000, 150000, 1500000, 500000, 7.14, 1000000, 5, 5, 0, 40, 50, 0, 90000, 0.05, 0.1, 5, 2, 300, 10000000, 85, "Aggressive"],
+        
+        # Normal 15. Clear Aggressive 3
+        ["Normal 15: Clear Aggressive 3", 110000, 40000, 20000, 0, 0, 600000, 300000, 7.5, 300000, 20, 10, 0, 30, 40, 0, 50000, 0.0, 0.0, 2, 0, 180, 2000000, 80, "Aggressive"]
+    ]
+    
+    cols = [
+        "case_name", "monthly_income", "essential_expenses", "discretionary_expenses",
+        "monthly_debt_payment", "total_debt", "total_assets", "liquid_savings", 
+        "emergency_fund_months", "investment_assets", "cash_percentage", "fd_percentage",
+        "debt_percentage", "mutual_fund_percentage", "equity_percentage", "gold_percentage",
+        "monthly_surplus", "debt_to_income_ratio", "debt_to_asset_ratio", "goal_count",
+        "high_priority_goals", "average_goal_horizon_months", "average_goal_funding_gap",
+        "average_goal_probability", "expected_category"
+    ]
+    
+    df = pd.DataFrame(cases, columns=cols)
+    df.to_csv("../data/test_cases.csv", index=False)
+    print("Created data/test_cases.csv")
+
+if __name__ == "__main__":
+    create_manual_cases()

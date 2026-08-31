@@ -4,43 +4,96 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { formatRupees } from "@/lib/formatters";
 import type { GoalInput, GoalSimulationResponse, ScenarioAssumptions } from "@/types/goals";
+import type { FinancialProfile } from "@/types/financial-profile";
 import { GoalEditor } from "./GoalEditor";
 import { GoalResultCard } from "./GoalResultCard";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { simulateGoals } from "@/lib/financial/goals";
 
 const DEFAULT_ASSUMPTIONS: ScenarioAssumptions = { conservative: { nominal_annual_return: 4, annual_volatility: 8, inflation_rate: 6 }, base: { nominal_annual_return: 8, annual_volatility: 15, inflation_rate: 5 }, optimistic: { nominal_annual_return: 12, annual_volatility: 22, inflation_rate: 4 } };
-const DEMO_GOALS: GoalInput[] = [
-  { id: "vehicle-demo", name: "Vehicle", category: "vehicle", target_amount: 800000, amount_basis: "today_value", current_saved: 100000, horizon_months: 48, priority: "high", flexibility: "somewhat_flexible", planned_monthly_contribution: 12000, annual_step_up_percentage: 5 },
-  { id: "house-demo", name: "House deposit", category: "house", target_amount: 4000000, amount_basis: "today_value", current_saved: 500000, horizon_months: 120, priority: "high", flexibility: "somewhat_flexible", planned_monthly_contribution: 20000, annual_step_up_percentage: 8 },
-  { id: "wealth-demo", name: "Long-term wealth", category: "wealth_creation", target_amount: 10000000, amount_basis: "future_value", current_saved: 300000, horizon_months: 240, priority: "medium", flexibility: "flexible", planned_monthly_contribution: 15000, annual_step_up_percentage: 10 },
-];
+
+function createEmptyGoal(): GoalInput {
+  return {
+    id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    name: "",
+    category: "custom",
+    target_amount: 0,
+    amount_basis: "today_value",
+    current_saved: 0,
+    horizon_months: 60,
+    priority: "medium",
+    flexibility: "somewhat_flexible",
+    planned_monthly_contribution: 0,
+    annual_step_up_percentage: 5
+  };
+}
+
+function calculateSurplus(profile: FinancialProfile | undefined | null): number | null {
+  if (!profile) return null;
+  const cf = profile.cash_flow;
+  const totalIncome = Number(cf.monthly_take_home_income || 0) + Number(cf.other_monthly_income || 0);
+  const totalEssential = Number(cf.housing || 0) + Number(cf.food || 0) + Number(cf.utilities || 0) + Number(cf.transport || 0) + Number(cf.insurance || 0) + Number(cf.healthcare || 0) + Number(cf.other_essential || 0);
+  const totalDiscretionary = Number(cf.shopping || 0) + Number(cf.dining_out || 0) + Number(cf.entertainment || 0) + Number(cf.subscriptions || 0) + Number(cf.travel_leisure || 0) + Number(cf.other_discretionary || 0);
+  const totalExpenses = totalEssential + totalDiscretionary;
+  const totalCommitments = Number(cf.monthly_debt_payments || 0) + Number(cf.existing_monthly_investments || 0);
+  return totalIncome - totalExpenses - totalCommitments;
+}
 
 export function GoalPlanner() {
   const { session, setGoals: saveGoals } = useFinSyncSession();
-  const [capacity, setCapacity] = useState(Math.max(0, session?.declared_monthly_capacity ?? session?.profile_analysis?.metrics.estimated_monthly_investment_capacity ?? 0));
-  const [goals, setGoals] = useState<GoalInput[]>(session?.goals.length ? session.goals : DEMO_GOALS);
+  
+  // Track if we're mounted to avoid hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  
+  const [goals, setGoals] = useState<GoalInput[]>([]);
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(DEFAULT_ASSUMPTIONS);
   const [monteCarlo, setMonteCarlo] = useState(true);
   const [simulationCount, setSimulationCount] = useState(1000);
   const [result, setResult] = useState<GoalSimulationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
   useEffect(() => {
     if (!session) return;
-    // Session storage hydrates after the server render; mirror that external state once available.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCapacity(Math.max(0, session.declared_monthly_capacity ?? session.profile_analysis?.metrics.estimated_monthly_investment_capacity ?? 0));
-    if (session.goals.length) setGoals(session.goals);
-    if (session.goal_simulation) setResult(session.goal_simulation);
+    if (session.goals && session.goals.length > 0) {
+      setGoals(session.goals);
+    } else {
+      setGoals([createEmptyGoal()]);
+    }
+    if (session.goal_simulation) {
+      setResult(session.goal_simulation);
+    }
+    setMounted(true);
   }, [session]);
+
+  if (!mounted) return null;
+
+  const capacity = calculateSurplus(session?.profile_input);
+
+  if (capacity === null) {
+    return (
+      <div className="mx-auto mt-20 max-w-4xl text-center py-10">
+        <h1 className="text-2xl font-bold text-white">Missing Financial Profile</h1>
+        <p className="mt-4 text-slate-400 mb-6">Complete and save your Financial Profile to calculate your monthly investment capacity.</p>
+        <Link href="/profile" className="inline-block primary-button">Go to Financial Profile</Link>
+      </div>
+    );
+  }
+
+  const safeCapacity = Math.max(0, capacity);
+  const totalPlanned = goals.reduce((sum, goal) => sum + (goal.planned_monthly_contribution || 0), 0);
+  const remainingCapacity = safeCapacity - totalPlanned;
+  const hasCapacityConflict = remainingCapacity < 0;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); 
     setLoading(true); 
     setError("");
     try {
-      // Validate goals before running simulation
+      if (goals.length === 0) {
+        throw new Error("Add at least one goal to simulate.");
+      }
       for (const goal of goals) {
         if (!goal.name || goal.name.trim() === "") throw new Error("Goal name cannot be empty.");
         if (goal.target_amount <= 0) throw new Error(`Target amount for '${goal.name}' must be greater than 0.`);
@@ -49,15 +102,11 @@ export function GoalPlanner() {
         if (goal.planned_monthly_contribution < 0) throw new Error(`Monthly contribution for '${goal.name}' cannot be negative.`);
         if (goal.annual_step_up_percentage < 0) throw new Error(`Annual step-up for '${goal.name}' cannot be negative.`);
         if (goal.inflation_rate !== undefined && goal.inflation_rate < 0) throw new Error(`Inflation rate for '${goal.name}' cannot be negative.`);
-        
-        // Let's warn but not throw if current_saved exceeds target for Future Value logic to avoid blocking them if they over-saved.
       }
 
-      // We use a small setTimeout to allow the UI to show the "Running scenarios..." loading state briefly, 
-      // especially since Monte Carlo can take a few milliseconds.
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      const simulation = simulateGoals(goals, capacity, assumptions, monteCarlo, simulationCount);
+      const simulation = simulateGoals(goals, safeCapacity, assumptions, monteCarlo, simulationCount);
       setResult(simulation); 
       saveGoals(goals, simulation); 
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -67,15 +116,130 @@ export function GoalPlanner() {
       setLoading(false); 
     }
   };
-  const updateGoal = (index: number, goal: GoalInput) => setGoals((current) => current.map((item, itemIndex) => itemIndex === index ? goal : item));
-  const addGoal = () => setGoals((current) => [...current, { id: `goal-${Date.now()}`, name: "New goal", category: "custom", target_amount: 500000, amount_basis: "today_value", current_saved: 0, horizon_months: 60, priority: "medium", flexibility: "somewhat_flexible", planned_monthly_contribution: 5000, annual_step_up_percentage: 5 }]);
 
-  return <div className="mx-auto w-full max-w-6xl"><header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><Link href="/onboarding" className="text-sm font-semibold text-emerald-300">← Financial profile</Link><p className="eyebrow mt-5">Deterministic goal planning</p><h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">Turn goals into testable plans.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Compare scenarios, adjust timelines and contributions, and see how multiple goals fit within monthly capacity.</p></div>{result && <button type="button" onClick={() => setResult(null)} className="secondary-button">Edit assumptions</button>}</header><p className="mb-6 rounded-xl border border-sky-400/15 bg-sky-400/5 p-4 text-xs leading-5 text-sky-200/70">Goals are seamlessly integrated with your financial profile. Simulating these goals will save them to your session and influence your final allocation plan.</p>
-    {result ? <Results result={result} onEditGoal={() => setResult(null)} /> : <form onSubmit={submit} className="space-y-6"><section className="onboarding-card"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><label className="block max-w-sm text-sm font-semibold text-slate-300"><span className="mb-2 block">Estimated monthly investment capacity</span><div className="goal-prefix"><span>₹</span><input type="number" min={0} required value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} className="goal-input !border-0" /></div><small>Pre-filled from your profile when available.</small></label><div className="text-sm text-slate-500">Current planned total <strong className="text-slate-200">{formatRupees(goals.reduce((sum, goal) => sum + goal.planned_monthly_contribution, 0))}</strong></div></div></section>{goals.map((goal, index) => <GoalEditor key={goal.id} goal={goal} index={index} onChange={(updated) => updateGoal(index, updated)} onRemove={() => setGoals((current) => current.filter((_, itemIndex) => itemIndex !== index))} removable={goals.length > 1} />)}<button type="button" onClick={addGoal} className="secondary-button">＋ Add another goal</button><AssumptionEditor assumptions={assumptions} onChange={setAssumptions} monteCarlo={monteCarlo} setMonteCarlo={setMonteCarlo} count={simulationCount} setCount={setSimulationCount} />{error && <div role="alert" className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div>}<div className="flex justify-end"><button type="submit" disabled={loading} className="primary-button !px-6 !py-4 disabled:cursor-wait disabled:opacity-60">{loading ? "Running scenarios…" : "Simulate all goals"}</button></div></form>}
-    <footer className="mx-auto mt-8 max-w-3xl border-t border-white/10 pt-6 text-center text-xs leading-5 text-slate-600">Hypothetical educational projections only—not forecasts, guaranteed outcomes, or regulated investment advice. Taxes, fees and product constraints are excluded.</footer></div>;
+  const updateGoal = (index: number, goal: GoalInput) => setGoals((current) => current.map((item, itemIndex) => itemIndex === index ? goal : item));
+  const addGoal = () => setGoals((current) => [...current, createEmptyGoal()]);
+  const removeGoal = (index: number) => setGoals((current) => current.filter((_, itemIndex) => itemIndex !== index));
+
+  return (
+    <div className="mx-auto w-full max-w-6xl">
+      <header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <Link href="/onboarding" className="text-sm font-semibold text-emerald-300">← Financial profile</Link>
+          <p className="eyebrow mt-5">Deterministic goal planning</p>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">Turn goals into testable plans.</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Compare scenarios, adjust timelines and contributions, and see how multiple goals fit within monthly capacity.</p>
+        </div>
+        {result && <button type="button" onClick={() => setResult(null)} className="secondary-button">Edit assumptions</button>}
+      </header>
+
+      <p className="mb-6 rounded-xl border border-sky-400/15 bg-sky-400/5 p-4 text-xs leading-5 text-sky-200/70">
+        Goals are seamlessly integrated with your financial profile. Simulating these goals will save them to your session and influence your final allocation plan.
+      </p>
+
+      {result ? (
+        <Results result={result} onEditGoal={() => setResult(null)} />
+      ) : (
+        <form onSubmit={submit} className="space-y-6">
+          <section className="onboarding-card">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Monthly Investment Capacity</p>
+                <h2 className="mt-1 text-2xl font-bold text-white">{formatRupees(safeCapacity)}</h2>
+                <p className="mt-1 text-xs text-slate-500">From Financial Profile</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Planned Across Goals</p>
+                <h2 className={`mt-1 text-2xl font-bold ${hasCapacityConflict ? 'text-amber-400' : 'text-white'}`}>{formatRupees(totalPlanned)}</h2>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Remaining Capacity</p>
+                <h2 className={`mt-1 text-2xl font-bold ${hasCapacityConflict ? 'text-amber-400' : 'text-emerald-400'}`}>{formatRupees(remainingCapacity)}</h2>
+              </div>
+            </div>
+            
+            {hasCapacityConflict && (
+              <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
+                Your planned monthly contributions exceed your available capacity by {formatRupees(Math.abs(remainingCapacity))}.
+              </div>
+            )}
+          </section>
+
+          {goals.length === 0 ? (
+            <div className="text-center py-20 rounded-2xl border border-white/10 bg-white/[0.025]">
+              <h2 className="text-2xl font-bold text-white mb-2">No goals added yet</h2>
+              <p className="text-slate-400 mb-6">Add your first financial goal to start planning.</p>
+              <button type="button" onClick={addGoal} className="primary-button">
+                + Add Goal
+              </button>
+            </div>
+          ) : (
+            <>
+              {goals.map((goal, index) => (
+                <GoalEditor 
+                  key={goal.id} 
+                  goal={goal} 
+                  index={index} 
+                  onChange={(updated) => updateGoal(index, updated)} 
+                  onRemove={() => removeGoal(index)} 
+                  removable={true} 
+                />
+              ))}
+              <button type="button" onClick={addGoal} className="secondary-button">＋ Add another goal</button>
+            </>
+          )}
+
+          <AssumptionEditor assumptions={assumptions} onChange={setAssumptions} monteCarlo={monteCarlo} setMonteCarlo={setMonteCarlo} count={simulationCount} setCount={setSimulationCount} />
+          
+          {error && <div role="alert" className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div>}
+          
+          <div className="flex justify-end">
+            <button type="submit" disabled={loading || goals.length === 0} className="primary-button !px-6 !py-4 disabled:cursor-wait disabled:opacity-60">
+              {loading ? "Running scenarios…" : "Simulate all goals"}
+            </button>
+          </div>
+        </form>
+      )}
+      <footer className="mx-auto mt-8 max-w-3xl border-t border-white/10 pt-6 text-center text-xs leading-5 text-slate-600">
+        Hypothetical educational projections only—not forecasts, guaranteed outcomes, or regulated investment advice. Taxes, fees and product constraints are excluded.
+      </footer>
+    </div>
+  );
 }
 
-function Results({ result, onEditGoal }: { result: GoalSimulationResponse; onEditGoal: (id: string) => void }) { const summary = result.capacity_summary; return <div><section className={`result-card ${summary.capacity_conflicts.length ? "!border-amber-400/30" : "!border-emerald-400/20"}`}><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Monthly capacity</p><h2 className="mt-1 text-3xl font-bold text-white">{formatRupees(summary.estimated_monthly_capacity)}</h2></div><div className="grid grid-cols-3 gap-5 text-sm"><Summary label="Planned" value={summary.total_planned_contributions} /><Summary label="Required" value={summary.total_required_contributions} /><Summary label="Remaining" value={summary.remaining_monthly_capacity} /></div></div>{summary.capacity_conflicts.length > 0 && <div className="mt-5 rounded-xl bg-amber-400/10 p-4"><h3 className="font-bold text-amber-200">Capacity conflict</h3><ul className="mt-2 space-y-1 text-sm text-amber-100/80">{summary.capacity_conflicts.map((item) => <li key={item}>• {item}</li>)}</ul></div>}<details className="mt-5 border-t border-white/10 pt-4"><summary className="cursor-pointer text-sm font-semibold text-slate-400">View capacity allocation order</summary><p className="mt-3 text-xs leading-5 text-slate-500">{summary.allocation_explanation}</p><div className="mt-3 space-y-2">{summary.allocations.map((item) => <div key={item.goal_id} className="flex justify-between rounded-lg bg-black/20 p-3 text-xs"><span className="text-slate-400">{item.goal_name} · {item.priority}</span><span className="text-slate-200">Assigned {formatRupees(item.assigned_monthly_capacity)} / required {formatRupees(item.required_monthly_contribution)}</span></div>)}</div></details></section><div className="mt-6 space-y-5">{result.goals.map((goal) => <div key={goal.id}><GoalResultCard goal={goal} /><button type="button" onClick={() => onEditGoal(goal.id)} className="mt-2 text-sm font-semibold text-emerald-300">Edit this goal</button></div>)}</div><details className="disclosure mt-6"><summary><span><strong>Assumptions and limitations</strong><small>Illustrative inputs and important interpretation boundaries</small></span><span>＋</span></summary><div className="grid gap-5 border-t border-white/10 p-5 md:grid-cols-2"><div>{Object.entries(result.assumptions).map(([name, values]) => <p key={name} className="mb-2 text-sm text-slate-400"><strong className="capitalize text-slate-200">{name}:</strong> {values.nominal_annual_return}% return, {values.annual_volatility}% volatility, {values.inflation_rate}% inflation</p>)}</div><ul className="space-y-2 text-xs leading-5 text-slate-500">{result.limitations.map((item) => <li key={item}>• {item}</li>)}</ul></div></details></div>; }
+function Results({ result, onEditGoal }: { result: GoalSimulationResponse; onEditGoal: (id: string) => void }) { 
+  const summary = result.capacity_summary; 
+  return <div>
+    <section className={`result-card ${summary.capacity_conflicts.length ? "!border-amber-400/30" : "!border-emerald-400/20"}`}>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Monthly capacity</p>
+          <h2 className="mt-1 text-3xl font-bold text-white">{formatRupees(summary.estimated_monthly_capacity)}</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-5 text-sm">
+          <Summary label="Planned" value={summary.total_planned_contributions} />
+          <Summary label="Required" value={summary.total_required_contributions} />
+          <Summary label="Remaining" value={summary.remaining_monthly_capacity} />
+        </div>
+      </div>
+      {summary.capacity_conflicts.length > 0 && <div className="mt-5 rounded-xl bg-amber-400/10 p-4"><h3 className="font-bold text-amber-200">Capacity conflict</h3><ul className="mt-2 space-y-1 text-sm text-amber-100/80">{summary.capacity_conflicts.map((item) => <li key={item}>• {item}</li>)}</ul></div>}
+      <details className="mt-5 border-t border-white/10 pt-4"><summary className="cursor-pointer text-sm font-semibold text-slate-400">View capacity allocation order</summary><p className="mt-3 text-xs leading-5 text-slate-500">{summary.allocation_explanation}</p><div className="mt-3 space-y-2">{summary.allocations.map((item) => <div key={item.goal_id} className="flex justify-between rounded-lg bg-black/20 p-3 text-xs"><span className="text-slate-400">{item.goal_name} · {item.priority}</span><span className="text-slate-200">Assigned {formatRupees(item.assigned_monthly_capacity)} / required {formatRupees(item.required_monthly_contribution)}</span></div>)}</div></details>
+    </section>
+    
+    <div className="mt-6 space-y-5">
+      {result.goals.map((goal) => <div key={goal.id}><GoalResultCard goal={goal} /><button type="button" onClick={() => onEditGoal(goal.id)} className="mt-2 text-sm font-semibold text-emerald-300">Edit this goal</button></div>)}
+    </div>
+    
+    <details className="disclosure mt-6"><summary><span><strong>Assumptions and limitations</strong><small>Illustrative inputs and important interpretation boundaries</small></span><span>＋</span></summary><div className="grid gap-5 border-t border-white/10 p-5 md:grid-cols-2"><div>{Object.entries(result.assumptions).map(([name, values]) => <p key={name} className="mb-2 text-sm text-slate-400"><strong className="capitalize text-slate-200">{name}:</strong> {values.nominal_annual_return}% return, {values.annual_volatility}% volatility, {values.inflation_rate}% inflation</p>)}</div><ul className="space-y-2 text-xs leading-5 text-slate-500">{result.limitations.map((item) => <li key={item}>• {item}</li>)}</ul></div></details>
+    
+    <div className="mt-8">
+      <Link href="/portfolio" className="primary-button w-full justify-center !py-4 text-lg">Continue to Portfolio &rarr;</Link>
+    </div>
+  </div>; 
+}
+
 function Summary({ label, value }: { label: string; value: number }) { return <div><p className="text-xs text-slate-600">{label}</p><p className="mt-1 font-bold text-slate-200">{formatRupees(value)}</p></div>; }
-function AssumptionEditor({ assumptions, onChange, monteCarlo, setMonteCarlo, count, setCount }: { assumptions: ScenarioAssumptions; onChange: (value: ScenarioAssumptions) => void; monteCarlo: boolean; setMonteCarlo: (value: boolean) => void; count: number; setCount: (value: number) => void }) { return <details className="disclosure"><summary><span><strong>Scenario and simulation assumptions</strong><small>Adjust these for what-if comparisons</small></span><span>＋</span></summary><div className="border-t border-white/10 p-5"><div className="grid gap-4 md:grid-cols-3">{(["conservative","base","optimistic"] as const).map((name) => <fieldset key={name} className="rounded-xl bg-black/20 p-4"><legend className="capitalize font-bold text-white">{name}</legend>{(["nominal_annual_return","annual_volatility","inflation_rate"] as const).map((field) => <label key={field} className="mt-3 block text-xs text-slate-500">{field.replaceAll("_", " ")} (%)<input type="number" min={field === "nominal_annual_return" ? -50 : 0} max={field === "inflation_rate" ? 20 : field === "annual_volatility" ? 100 : 50} step={0.5} value={assumptions[name][field]} onChange={(event) => onChange({ ...assumptions, [name]: { ...assumptions[name], [field]: Number(event.target.value) } })} className="goal-input mt-1" /></label>)}</fieldset>)}</div><div className="mt-5 flex flex-wrap items-end gap-5"><label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={monteCarlo} onChange={(event) => setMonteCarlo(event.target.checked)} /> Include seeded Monte Carlo</label>{monteCarlo && <label className="text-xs text-slate-500">Generated scenarios<input type="number" min={100} max={10000} step={100} value={count} onChange={(event) => setCount(Number(event.target.value))} className="goal-input mt-1 w-36" /></label>}</div><p className="mt-4 text-xs leading-5 text-slate-600">These are hypothetical inputs, not forecasts or promised returns. Monte Carlo draws monthly returns from a normal distribution using the selected base return and volatility.</p></div></details>; }
-function apiError(body: unknown): string { if (typeof body === "object" && body !== null && "detail" in body) { const detail = (body as { detail: unknown }).detail; if (Array.isArray(detail) && detail[0] && typeof detail[0] === "object" && "msg" in detail[0]) return `Please review your goals: ${String(detail[0].msg)}`; } return "Goal simulation failed. Check the API connection and inputs."; }
+
+function AssumptionEditor({ assumptions, onChange, monteCarlo, setMonteCarlo, count, setCount }: { assumptions: ScenarioAssumptions; onChange: (value: ScenarioAssumptions) => void; monteCarlo: boolean; setMonteCarlo: (value: boolean) => void; count: number; setCount: (value: number) => void }) { 
+  return <details className="disclosure"><summary><span><strong>Scenario and simulation assumptions</strong><small>Adjust these for what-if comparisons</small></span><span>＋</span></summary><div className="border-t border-white/10 p-5"><div className="grid gap-4 md:grid-cols-3">{(["conservative","base","optimistic"] as const).map((name) => <fieldset key={name} className="rounded-xl bg-black/20 p-4"><legend className="capitalize font-bold text-white">{name}</legend>{(["nominal_annual_return","annual_volatility","inflation_rate"] as const).map((field) => <label key={field} className="mt-3 block text-xs text-slate-500">{field.replaceAll("_", " ")} (%)<input type="number" min={field === "nominal_annual_return" ? -50 : 0} max={field === "inflation_rate" ? 20 : field === "annual_volatility" ? 100 : 50} step={0.5} value={assumptions[name][field]} onChange={(event) => onChange({ ...assumptions, [name]: { ...assumptions[name], [field]: Number(event.target.value) } })} className="goal-input mt-1" /></label>)}</fieldset>)}</div><div className="mt-5 flex flex-wrap items-end gap-5"><label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={monteCarlo} onChange={(event) => setMonteCarlo(event.target.checked)} /> Include seeded Monte Carlo</label>{monteCarlo && <label className="text-xs text-slate-500">Generated scenarios<input type="number" min={100} max={10000} step={100} value={count} onChange={(event) => setCount(Number(event.target.value))} className="goal-input mt-1 w-36" /></label>}</div><p className="mt-4 text-xs leading-5 text-slate-600">These are hypothetical inputs, not forecasts or promised returns. Monte Carlo draws monthly returns from a normal distribution using the selected base return and volatility.</p></div></details>; 
+}

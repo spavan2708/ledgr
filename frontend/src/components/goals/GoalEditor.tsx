@@ -8,8 +8,10 @@ export function GoalEditor({ goal, index, onChange, onRemove, removable }: { goa
     <Field label="Priority"><select value={goal.priority} onChange={(event) => update("priority", event.target.value as GoalInput["priority"])} className="goal-input">{["essential","high","medium","low"].map((item) => <option key={item} value={item}>{label(item)}</option>)}</select></Field>
     <Money label="Target amount" value={goal.target_amount} onChange={(value) => update("target_amount", value)} min={1} />
     <Field label="Amount basis"><select value={goal.amount_basis} onChange={(event) => update("amount_basis", event.target.value as GoalInput["amount_basis"])} className="goal-input"><option value="today_value">Today&apos;s value</option><option value="future_value">Future value</option></select></Field>
-    <Money label="Already saved" value={goal.current_saved} onChange={(value) => update("current_saved", value)} />
-    <Field label="Timeline (months)"><input required type="number" min={1} max={600} value={goal.horizon_months} onChange={(event) => update("horizon_months", Number(event.target.value))} className="goal-input" /><small>{(goal.horizon_months / 12).toFixed(1)} years</small></Field>
+    <Money label="Already Saved / Invested" value={goal.current_saved} onChange={(value) => update("current_saved", value)}>
+      <small className="block mt-1 text-slate-500">Amount you have already set aside toward this goal.</small>
+    </Money>
+    <Field label="Timeline (months)"><input required type="number" min={1} max={600} value={goal.horizon_months} onChange={(event) => update("horizon_months", Number(event.target.value))} className="goal-input" /><small className="block mt-1">{(goal.horizon_months / 12).toFixed(1)} years</small></Field>
     <Money label="Planned monthly contribution" value={goal.planned_monthly_contribution} onChange={(value) => update("planned_monthly_contribution", value)} />
     <Field label="Annual contribution step-up"><div className="goal-prefix"><input type="number" min={0} max={100} step={0.5} value={goal.annual_step_up_percentage} onChange={(event) => update("annual_step_up_percentage", Number(event.target.value))} className="goal-input !border-0" /><span>%</span></div></Field>
     <Field label="Flexibility"><select value={goal.flexibility} onChange={(event) => update("flexibility", event.target.value as GoalInput["flexibility"])} className="goal-input">{["fixed","somewhat_flexible","flexible"].map((item) => <option key={item} value={item}>{label(item)}</option>)}</select></Field>
@@ -19,5 +21,5 @@ export function GoalEditor({ goal, index, onChange, onRemove, removable }: { goa
 }
 
 function Field({ label: text, children }: { label: string; children: React.ReactNode }) { return <label className="block text-sm font-semibold text-slate-300"><span className="mb-2 block">{text}</span>{children}</label>; }
-function Money({ label: text, value, onChange, min = 0 }: { label: string; value: number; onChange: (value: number) => void; min?: number }) { return <Field label={text}><div className="goal-prefix"><span>₹</span><input required type="number" min={min} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))} className="goal-input !border-0" /></div></Field>; }
+function Money({ label: text, value, onChange, min = 0, children }: { label: string; value: number; onChange: (value: number) => void; min?: number; children?: React.ReactNode }) { return <Field label={text}><div className="goal-prefix"><span>₹</span><input required type="number" min={min} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))} className="goal-input !border-0" /></div>{children}</Field>; }
 const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());

@@ -1,0 +1,39 @@
+{
+    "model_name": "RandomForestClassifier",
+    "model_version": "risk_classifier_v1",
+    "training_dataset_size": 8000,
+    "feature_names": [
+        "monthly_income",
+        "essential_expenses",
+        "discretionary_expenses",
+        "monthly_debt_payment",
+        "total_debt",
+        "total_assets",
+        "liquid_savings",
+        "emergency_fund_months",
+        "investment_assets",
+        "cash_percentage",
+        "fd_percentage",
+        "debt_percentage",
+        "mutual_fund_percentage",
+        "equity_percentage",
+        "gold_percentage",
+        "monthly_surplus",
+        "debt_to_income_ratio",
+        "debt_to_asset_ratio",
+        "goal_count",
+        "high_priority_goals",
+        "average_goal_horizon_months",
+        "average_goal_funding_gap",
+        "average_goal_probability"
+    ],
+    "class_names": [
+        "Aggressive",
+        "Balanced",
+        "Conservative"
+    ],
+    "random_seed": 42,
+    "training_date": "2026-08-31T12:40:55.934496",
+    "test_accuracy": 0.816,
+    "macro_f1": 0.8105911718848509
+}

@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { formatRupees } from "@/lib/formatters";
-import type { FinancialProfile, FinancialProfileResult } from "@/types/financial-profile";
+import type { FinancialProfile } from "@/types/financial-profile";
 
 function computeTotals(p: FinancialProfile) {
   const cf = p.cash_flow;
@@ -15,17 +15,13 @@ function computeTotals(p: FinancialProfile) {
   const totalExpenses = totalEssential + totalDiscretionary;
   const totalCommitments = cf.monthly_debt_payments + cf.existing_monthly_investments;
   const monthlySurplus = totalIncome - totalExpenses - totalCommitments;
-
-  const a = p.assets;
-  const totalAssets = a.cash_bank + a.fd + a.mutual_funds + a.stocks_equity + a.bonds_debt + a.gold + a.other_assets;
   const totalLiabilities = p.liabilities.outstanding_loans + p.liabilities.other_liabilities;
-  const netWorth = totalAssets - totalLiabilities;
 
-  return { totalIncome, totalEssential, totalDiscretionary, totalExpenses, totalCommitments, monthlySurplus, totalAssets, totalLiabilities, netWorth };
+  return { totalIncome, totalEssential, totalDiscretionary, totalExpenses, totalCommitments, monthlySurplus, totalLiabilities };
 }
 
 export default function ReviewPage() {
-  const { session, setProfile } = useFinSyncSession();
+  const { session, setProfile, setProfileStatus } = useFinSyncSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,14 +44,22 @@ export default function ReviewPage() {
     router.push(`/profile?step=${step}`);
   };
 
-  const handleAnalyze = () => { router.push("/profile/analyze"); };
+  const handleSave = () => { 
+    if (session?.profile_status === 'editing') {
+      setProfileStatus('completed');
+      router.push('/profile');
+    } else {
+      setProfileStatus('completed');
+      router.push("/goals"); 
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-4xl py-10">
       <header className="mb-8">
         <p className="eyebrow">Final Step</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Review Your Information</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Please verify all the details you've entered before we generate your educational financial plan.</p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Please verify all the details you have entered before we save your profile.</p>
       </header>
 
       <div className="onboarding-card">
@@ -68,21 +72,25 @@ export default function ReviewPage() {
         )}
 
         <div className="mt-10 flex items-center justify-end gap-4 border-t border-white/10 pt-6">
-          <button 
-            type="button" 
-            onClick={handleAnalyze} 
-            disabled={loading} 
-            className="primary-button disabled:cursor-wait disabled:opacity-60"
-          >
-            {loading ? "Analyzingâ€¦" : "Confirm & Analyze"}
-          </button>
+          {session?.profile_status === 'completed' ? (
+             <button type="button" onClick={() => router.push('/profile')} className="primary-button">Back to Profile</button>
+          ) : (
+            <button 
+              type="button" 
+              onClick={handleSave} 
+              disabled={loading} 
+              className="primary-button disabled:cursor-wait disabled:opacity-60"
+            >
+              {session?.profile_status === 'editing' ? 'Save Changes' : 'Save Profile & Continue'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/* â”€â”€â”€ Review Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Review Components --- */
 
 interface ReviewProps {
   profile: FinancialProfile;
@@ -93,12 +101,13 @@ interface ReviewProps {
 function ReviewScreen({ profile, totals, onEdit }: ReviewProps) {
   const p = profile;
   const cf = p.cash_flow;
+  const totalMonthlyOutflow = totals.totalExpenses + totals.totalCommitments;
 
   return (
     <div className="space-y-4">
       {/* About You */}
       <ReviewSection title="About You" onEdit={() => onEdit(0)}>
-        <ReviewRow label="Age" value={p.personal.age || "â€”"} />
+        <ReviewRow label="Age" value={p.personal.age || 0} />
         <ReviewRow label="Occupation" value={p.personal.occupation} />
         <ReviewRow label="Dependents" value={p.personal.dependents} />
       </ReviewSection>
@@ -132,32 +141,29 @@ function ReviewScreen({ profile, totals, onEdit }: ReviewProps) {
         <ReviewSubheading text="Financial Commitments" />
         <ReviewRow label="Debt / EMI payments" value={formatRupees(cf.monthly_debt_payments)} />
         <ReviewRow label="Existing investments / SIPs" value={formatRupees(cf.existing_monthly_investments)} />
+        <ReviewCalc label="Total financial commitments" value={formatRupees(totals.totalCommitments)} />
+
+        <ReviewSubheading text="Summary" />
+        <ReviewCalc label="Total living expenses" value={formatRupees(totals.totalExpenses)} />
+        <ReviewCalc label="Total monthly outflow" value={formatRupees(totalMonthlyOutflow)} />
         <ReviewCalc label="Monthly surplus" value={formatRupees(totals.monthlySurplus)} highlight />
       </ReviewSection>
 
-      {/* Assets */}
-      <ReviewSection title="What You Own" onEdit={() => onEdit(2)}>
-        <ReviewRow label="Cash / Bank" value={formatRupees(p.assets.cash_bank)} />
-        <ReviewRow label="Fixed Deposits" value={formatRupees(p.assets.fd)} />
-        <ReviewRow label="Mutual Funds" value={formatRupees(p.assets.mutual_funds)} />
-        <ReviewRow label="Stocks / Equity" value={formatRupees(p.assets.stocks_equity)} />
-        <ReviewRow label="Bonds / Debt" value={formatRupees(p.assets.bonds_debt)} />
-        <ReviewRow label="Gold" value={formatRupees(p.assets.gold)} />
-        <ReviewRow label="Other assets" value={formatRupees(p.assets.other_assets)} />
-        <ReviewCalc label="Total assets" value={formatRupees(totals.totalAssets)} highlight />
-      </ReviewSection>
-
-      {/* Liabilities & Safety */}
-      <ReviewSection title="What You Owe & Safety" onEdit={() => onEdit(3)}>
+      {/* Liabilities and Safety */}
+      <ReviewSection title="What You Owe and Safety" onEdit={() => onEdit(2)}>
+        <ReviewSubheading text="Liabilities" />
         <ReviewRow label="Outstanding loans" value={formatRupees(p.liabilities.outstanding_loans)} />
         <ReviewRow label="Other liabilities" value={formatRupees(p.liabilities.other_liabilities)} />
         <ReviewCalc label="Total liabilities" value={formatRupees(totals.totalLiabilities)} />
-        <ReviewRow label="Emergency fund" value={formatRupees(p.safety.emergency_savings)} />
-        <ReviewCalc label="Net worth" value={formatRupees(totals.netWorth)} highlight />
+
+        <ReviewSubheading text="Emergency Safety" />
+        <ReviewRow label="Emergency fund target" value={formatRupees(p.safety.emergency_savings)} />
+
+        <p className="mt-3 text-xs text-slate-500">Assets and net worth will be calculated after you add your holdings in Portfolio.</p>
       </ReviewSection>
 
       {/* Risk */}
-      <ReviewSection title="Risk & Investment Behaviour" onEdit={() => onEdit(4)}>
+      <ReviewSection title="Risk and Investment Behaviour" onEdit={() => onEdit(3)}>
         <ReviewRow label="Investment experience" value={p.risk.investment_experience} />
         <ReviewRow label="20% decline response" value={p.risk.market_loss_reaction} />
         <ReviewRow label="Investment horizon" value={p.risk.investment_horizon} />
@@ -167,12 +173,12 @@ function ReviewScreen({ profile, totals, onEdit }: ReviewProps) {
   );
 }
 
-function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+function ReviewSection({ title, onEdit, children }: { title: string; onEdit?: () => void; children: ReactNode }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-black/20 p-5 transition-colors hover:border-emerald-400/40">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-bold text-emerald-300">{title}</h2>
-        <button type="button" onClick={onEdit} className="text-xs font-semibold text-slate-400 transition-colors hover:text-emerald-300">Edit</button>
+        {onEdit && <button type="button" onClick={onEdit} className="text-xs font-semibold text-slate-400 transition-colors hover:text-emerald-300">Edit</button>}
       </div>
       <dl className="space-y-2">{children}</dl>
     </section>

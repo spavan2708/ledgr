@@ -1,4 +1,7 @@
-﻿export interface FinancialPlan {
+import type { FinancialRiskFactorResult } from "@/lib/financial/financialRiskFactor";
+import type { AssetAllocationResult } from "@/lib/financial/assetAllocation";
+
+export interface FinancialPlan {
   calculations: FinancialCalculations;
   emergencyFund: EmergencyFundAnalysis;
   debt: DebtAnalysis;
@@ -6,11 +9,15 @@
   allocation: AllocationAnalysis;
   recommendations: InvestmentRecommendations;
   healthScore: HealthScore;
+  unifiedRiskFactor?: FinancialRiskFactorResult;
+  assetAllocation?: AssetAllocationResult;
 }
 
 export interface FinancialCalculations {
   totalMonthlyIncome: number;
   totalEssentialExpenses: number;
+  totalDiscretionaryExpenses: number;
+  totalDebtPayments: number;
   totalMonthlyExpenses: number;
   monthlySurplus: number;
   totalFinancialAssets: number;

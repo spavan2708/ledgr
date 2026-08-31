@@ -12,7 +12,7 @@ import { formatRupees } from "@/lib/formatters";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
 
-const STEP_LABELS = ["About You", "Monthly Cash Flow", "What You Own", "What You Owe & Safety", "Risk & Investment Behaviour"];
+const STEP_LABELS = ["About You", "Monthly Cash Flow", "What You Owe & Safety", "Risk & Investment Behaviour"];
 
 const INITIAL_PROFILE: FinancialProfile = {
   personal: { age: 0, occupation: "Salaried", dependents: 0 },
@@ -53,7 +53,7 @@ function blockEnter(e: KeyboardEvent<HTMLInputElement | HTMLSelectElement>) {
   if (e.key === "Enter") { e.preventDefault(); }
 }
 
-/** Compute derived totals from profile. */
+/** Compute derived totals from profile. Assets/net worth are NOT calculated here — they belong to Portfolio. */
 function computeTotals(p: FinancialProfile) {
   const cf = p.cash_flow;
   const totalIncome = Number(cf.monthly_take_home_income || 0) + Number(cf.other_monthly_income || 0);
@@ -62,13 +62,9 @@ function computeTotals(p: FinancialProfile) {
   const totalExpenses = totalEssential + totalDiscretionary;
   const totalCommitments = Number(cf.monthly_debt_payments || 0) + Number(cf.existing_monthly_investments || 0);
   const monthlySurplus = totalIncome - totalExpenses - totalCommitments;
-
-  const a = p.assets;
-  const totalAssets = Number(a.cash_bank || 0) + Number(a.fd || 0) + Number(a.mutual_funds || 0) + Number(a.stocks_equity || 0) + Number(a.bonds_debt || 0) + Number(a.gold || 0) + Number(a.other_assets || 0);
   const totalLiabilities = Number(p.liabilities.outstanding_loans || 0) + Number(p.liabilities.other_liabilities || 0);
-  const netWorth = totalAssets - totalLiabilities;
 
-  return { totalIncome, totalEssential, totalDiscretionary, totalExpenses, totalCommitments, monthlySurplus, totalAssets, totalLiabilities, netWorth };
+  return { totalIncome, totalEssential, totalDiscretionary, totalExpenses, totalCommitments, monthlySurplus, totalLiabilities };
 }
 
 /* ─── Validation ────────────────────────────────────────────────── */
@@ -152,23 +148,34 @@ function SelectField({ id, label, value, options, onChange, onKeyDown, hint }: {
 /* ─── Main Component ────────────────────────────────────────────── */
 
 export function OnboardingForm() {
-  const { session, setProfile: saveProfile } = useFinSyncSession();
+  const { session, setProfile: saveProfile, setLastOnboardingStep, setProfileStatus } = useFinSyncSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(session?.last_onboarding_step ?? 0);
   const [profile, setProfile] = useState<FinancialProfile>(session?.profile_input ?? INITIAL_PROFILE);
   const [errors, setErrors] = useState<StepErrors>({});
 
   useEffect(() => {
+    // Start tracking in_progress explicitly if not editing
+    if (!session?.profile_status || session.profile_status === 'new') {
+      setProfileStatus('in_progress');
+    }
+
+    // If the profile is fully completed and we don't have a specific step in the URL, redirect to Review.
+    if (session?.profile_status === "completed" && !searchParams.has("step")) {
+      router.replace("/profile/review");
+      return;
+    }
+    
     const stepParam = searchParams.get("step");
     if (stepParam !== null) {
       const parsed = parseInt(stepParam, 10);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 4) {
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 3) {
         setStep(parsed);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, session?.profile_status, router, setProfileStatus]);
 
   /* ── Generic change handlers ── */
 
@@ -182,11 +189,6 @@ export function OnboardingForm() {
     const { name, value } = e.target;
     setProfile(p => ({ ...p, cash_flow: { ...p.cash_flow, [name]: parseNum(value) } }));
     setErrors(prev => { const next = { ...prev }; delete next[name]; return next; });
-  };
-
-  const onAssetsInput = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProfile(p => ({ ...p, assets: { ...p.assets, [name]: parseNum(value) } }));
   };
 
   const onLiabilitiesInput = (e: ChangeEvent<HTMLInputElement>) => {
@@ -218,17 +220,25 @@ export function OnboardingForm() {
     // Save incrementally
     saveProfile(profile);
 
-    if (step < 4) {
-      setStep(s => s + 1);
+    if (step < 3) {
+      const nextStep = step + 1;
+      setStep(nextStep);
+      setLastOnboardingStep(nextStep);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      // Step 4 is the final data entry step. Proceed to review page.
+      // Step 4 is the final data entry step. Proceed to review.
+      setLastOnboardingStep(3);
+      setProfileStatus('review');
       router.push("/profile/review");
     }
   };
 
   const goBack = () => {
-    setStep(s => Math.max(s - 1, 0));
+    setStep(s => {
+      const prevStep = Math.max(s - 1, 0);
+      setLastOnboardingStep(prevStep);
+      return prevStep;
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -253,7 +263,7 @@ export function OnboardingForm() {
 
           {/* ═══════════ STEP 1 — About You ═══════════ */}
           {step === 0 && <>
-            <StepHeader eyebrow="Step 1 of 5" title="About You" description="A few personal details to help put your finances into context." />
+            <StepHeader eyebrow="Step 1 of 4" title="About You" description="A few personal details to help put your finances into context." />
             <FieldGrid>
               <FormField
                 id="age" label="Age" type="number" min={10} max={120}
@@ -278,7 +288,7 @@ export function OnboardingForm() {
 
           {/* ═══════════ STEP 2 — Monthly Cash Flow ═══════════ */}
           {step === 1 && <>
-            <StepHeader eyebrow="Step 2 of 5" title="Monthly Cash Flow" description="Understand where your money comes from and where it goes each month." />
+            <StepHeader eyebrow="Step 2 of 4" title="Monthly Cash Flow" description="Understand where your money comes from and where it goes each month." />
 
             <div className="space-y-6">
               {/* Income */}
@@ -338,8 +348,9 @@ export function OnboardingForm() {
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.15em] text-emerald-300">Cash Flow Summary</h3>
                 <SummaryRow label="Total monthly income" value={formatRupees(totals.totalIncome)} />
-                <SummaryRow label="Total expenses" value={formatRupees(totals.totalExpenses)} />
+                <SummaryRow label="Total living expenses" value={formatRupees(totals.totalExpenses)} />
                 <SummaryRow label="Total financial commitments" value={formatRupees(totals.totalCommitments)} />
+                <SummaryRow label="Total monthly outflow" value={formatRupees(totals.totalExpenses + totals.totalCommitments)} />
                 <div className="mt-2 border-t border-emerald-400/20 pt-2">
                   <SummaryRow label="Monthly surplus / available" value={formatRupees(totals.monthlySurplus)} highlight />
                 </div>
@@ -347,42 +358,28 @@ export function OnboardingForm() {
             </div>
           </>}
 
-          {/* ═══════════ STEP 3 — What You Own ═══════════ */}
-          {step === 2 && <>
-            <StepHeader eyebrow="Step 3 of 5" title="What You Own" description="Enter the current value of your assets. Leave fields empty if not applicable." />
-            <FieldGrid>
-              <MoneyField id="cash_bank" label="Cash / Bank balance" value={numDisplay(profile.assets.cash_bank)} onChange={onAssetsInput} onKeyDown={blockEnter} hint="Savings + current accounts" />
-              <MoneyField id="fd" label="Fixed Deposits (FD)" value={numDisplay(profile.assets.fd)} onChange={onAssetsInput} onKeyDown={blockEnter} />
-              <MoneyField id="mutual_funds" label="Mutual Funds" value={numDisplay(profile.assets.mutual_funds)} onChange={onAssetsInput} onKeyDown={blockEnter} />
-              <MoneyField id="stocks_equity" label="Stocks / Equity" value={numDisplay(profile.assets.stocks_equity)} onChange={onAssetsInput} onKeyDown={blockEnter} />
-              <MoneyField id="bonds_debt" label="Bonds / Debt instruments" value={numDisplay(profile.assets.bonds_debt)} onChange={onAssetsInput} onKeyDown={blockEnter} />
-              <MoneyField id="gold" label="Gold investments" value={numDisplay(profile.assets.gold)} onChange={onAssetsInput} onKeyDown={blockEnter} hint="Physical gold, gold ETFs, sovereign gold bonds" />
-              <MoneyField id="other_assets" label="Other assets" value={numDisplay(profile.assets.other_assets)} onChange={onAssetsInput} onKeyDown={blockEnter} />
-            </FieldGrid>
-            <div className="mt-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
-              <SummaryRow label="Total assets" value={formatRupees(computeTotals(profile).totalAssets)} highlight />
-            </div>
-          </>}
-
+          
           {/* ═══════════ STEP 4 — What You Owe & Safety ═══════════ */}
-          {step === 3 && <>
-            <StepHeader eyebrow="Step 4 of 5" title="What You Owe & Safety" description="Outstanding debts and your emergency safety net." />
+          {step === 2 && <>
+            <StepHeader eyebrow="Step 3 of 4" title="What You Owe & Safety" description="Outstanding debts and your emergency safety net." />
             <FieldGrid>
               <MoneyField id="outstanding_loans" label="Total outstanding loan amount" value={numDisplay(profile.liabilities.outstanding_loans)} onChange={onLiabilitiesInput} onKeyDown={blockEnter} hint="Total remaining balance on all loans" />
               <MoneyField id="other_liabilities" label="Other outstanding liabilities" value={numDisplay(profile.liabilities.other_liabilities)} onChange={onLiabilitiesInput} onKeyDown={blockEnter} hint="Credit card dues, informal borrowings, etc." />
             </FieldGrid>
-            <div className="mt-6">
-              <MoneyField id="emergency_savings" label="Emergency fund amount" value={numDisplay(profile.safety.emergency_savings)} onChange={onSafetyInput} onKeyDown={blockEnter} hint="The portion of your Cash/Bank balance kept specifically for emergencies. This is not an additional asset — it is already included in your bank balance above." />
+            <div className="mt-8">
+              <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.15em] text-emerald-300">Emergency Safety</h3>
+              <MoneyField id="emergency_savings" label="Emergency fund target" value={numDisplay(profile.safety.emergency_savings)} onChange={onSafetyInput} onKeyDown={blockEnter} hint="How much would you like to keep available as an emergency reserve? Your actual Cash/Bank balance will be recorded later in Portfolio." />
             </div>
             <div className="mt-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
               <SummaryRow label="Total liabilities" value={formatRupees(computeTotals(profile).totalLiabilities)} />
-              <SummaryRow label="Net worth" value={formatRupees(computeTotals(profile).netWorth)} highlight />
+              <SummaryRow label="Emergency fund target" value={formatRupees(profile.safety.emergency_savings)} />
+              <p className="mt-3 text-xs text-slate-500">Your actual assets and net worth will be calculated after you add your holdings in Portfolio.</p>
             </div>
           </>}
 
           {/* ═══════════ STEP 5 — Risk & Investment Behaviour ═══════════ */}
-          {step === 4 && <>
-            <StepHeader eyebrow="Step 5 of 5" title="Risk & Investment Behaviour" description="Help us understand your comfort with investing. There are no right or wrong answers." />
+          {step === 3 && <>
+            <StepHeader eyebrow="Step 4 of 4" title="Risk & Investment Behaviour" description="Help us understand your comfort with investing. There are no right or wrong answers." />
             <div className="space-y-6">
               <SelectField
                 id="investment_experience" label="Investment experience"
@@ -420,7 +417,7 @@ export function OnboardingForm() {
             ) : <span />}
             
             <button type="button" onClick={continueStep} className="primary-button">
-              {step < 4 ? "Continue " : "Review Profile "} <span aria-hidden="true">&rarr;</span>
+              {step < 3 ? "Continue " : "Review Profile "} <span aria-hidden="true">&rarr;</span>
             </button>
           </div>
         </form>

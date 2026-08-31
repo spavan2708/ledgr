@@ -17,7 +17,7 @@ function randomNormal(mean: number, stdDev: number): number {
   return num * stdDev + mean;
 }
 
-function calculateProjectedValue(
+export function calculateProjectedValue(
   initialAmount: number,
   monthlyContribution: number,
   horizonMonths: number,
@@ -42,7 +42,7 @@ function calculateProjectedValue(
   return { finalValue: balance, timeline };
 }
 
-function calculateFlatRequiredMonthlyContribution(
+export function calculateFlatRequiredMonthlyContribution(
   target: number,
   initial: number,
   horizonMonths: number,
@@ -60,10 +60,10 @@ function calculateFlatRequiredMonthlyContribution(
   
   if (remaining <= 0) return 0;
   const pmt = remaining / ((Math.pow(1 + r, n) - 1) / r);
-  return pmt;
+  return Math.max(0, pmt);
 }
 
-function runMonteCarlo(
+export function runMonteCarlo(
   initialAmount: number,
   monthlyContribution: number,
   horizonMonths: number,
@@ -227,16 +227,6 @@ export function simulateGoals(
         : goal.target_amount * (pt.month / goal.horizon_months);
     }
 
-    const baseProj = scenarios.find(s => s.scenario === "base")!;
-    let status: GoalResult["status"] = "currently_unfeasible";
-    if (goal.current_saved >= futureTarget) {
-      status = "already_funded";
-    } else if (baseProj.attainment_percentage >= 100) {
-      status = "on_track";
-    } else if (baseProj.attainment_percentage >= 80) {
-      status = "needs_adjustment";
-    }
-
     let capStatus: GoalResult["capacity_status"] = "unfunded";
     if (assigned >= goal.planned_monthly_contribution) {
       capStatus = "funded";
@@ -251,6 +241,17 @@ export function simulateGoals(
       baseAssumptions.nominal_annual_return,
       goal.annual_step_up_percentage
     );
+
+    const actualAttainmentPct = (allocatedVal / futureTarget) * 100;
+    
+    let status: GoalResult["status"] = "currently_unfeasible";
+    if (goal.current_saved >= futureTarget) {
+      status = "already_funded";
+    } else if (actualAttainmentPct >= 100) {
+      status = "on_track";
+    } else if (actualAttainmentPct >= 80) {
+      status = "needs_adjustment";
+    }
 
     let mcResult: MonteCarloResult | null = null;
     if (enableMonteCarlo) {
@@ -282,9 +283,9 @@ export function simulateGoals(
       required_monthly_contribution: reqContrib,
       planned_monthly_contribution: goal.planned_monthly_contribution,
       projected_value: projectedBase,
-      funding_gap_or_surplus: baseProj.funding_gap_or_surplus,
+      funding_gap_or_surplus: projectedBase - futureTarget,
       progress_percentage: Math.min(100, (goal.current_saved / futureTarget) * 100),
-      projected_attainment_percentage: baseProj.attainment_percentage,
+      projected_attainment_percentage: actualAttainmentPct,
       scenarios,
       timeline,
       monte_carlo: mcResult,

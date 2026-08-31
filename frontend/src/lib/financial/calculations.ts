@@ -44,6 +44,8 @@ export function calculateFinancials(profile: FinancialProfile): FinancialCalcula
   return {
     totalMonthlyIncome,
     totalEssentialExpenses,
+    totalDiscretionaryExpenses: nonEssentialMonthlyExpenses,
+    totalDebtPayments: Number(cf.monthly_debt_payments || 0),
     totalMonthlyExpenses,
     monthlySurplus,
     totalFinancialAssets,
