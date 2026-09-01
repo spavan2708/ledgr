@@ -153,14 +153,6 @@ export function simulateGoals(
       ? goal.target_amount * Math.pow(1 + inflation / 100, years)
       : goal.target_amount;
 
-    const { finalValue: projectedBase, timeline } = calculateProjectedValue(
-      goal.current_saved,
-      goal.planned_monthly_contribution,
-      goal.horizon_months,
-      baseAssumptions.nominal_annual_return,
-      goal.annual_step_up_percentage
-    );
-
     const reqContrib = calculateFlatRequiredMonthlyContribution(
       futureTarget,
       goal.current_saved,
@@ -185,6 +177,14 @@ export function simulateGoals(
       capacity_conflicts.push(`Insufficient capacity to fully fund '${goal.name}'. Shortfall: ₹${Math.round(unfundedGap).toLocaleString('en-IN')} / month`);
     }
 
+    const { finalValue: projectedBase, timeline } = calculateProjectedValue(
+      goal.current_saved,
+      assigned,
+      goal.horizon_months,
+      baseAssumptions.nominal_annual_return,
+      goal.annual_step_up_percentage
+    );
+
     allocations.push({
       goal_id: goal.id,
       goal_name: goal.name,
@@ -204,7 +204,7 @@ export function simulateGoals(
         
       const { finalValue: scVal } = calculateProjectedValue(
         goal.current_saved,
-        goal.planned_monthly_contribution,
+        assigned,
         goal.horizon_months,
         asc.nominal_annual_return,
         goal.annual_step_up_percentage
@@ -234,15 +234,7 @@ export function simulateGoals(
       capStatus = "partially_funded";
     }
 
-    const { finalValue: allocatedVal } = calculateProjectedValue(
-      goal.current_saved,
-      assigned,
-      goal.horizon_months,
-      baseAssumptions.nominal_annual_return,
-      goal.annual_step_up_percentage
-    );
-
-    const actualAttainmentPct = (allocatedVal / futureTarget) * 100;
+    const actualAttainmentPct = (projectedBase / futureTarget) * 100;
     
     let status: GoalResult["status"] = "currently_unfeasible";
     if (goal.current_saved >= futureTarget) {
@@ -257,7 +249,7 @@ export function simulateGoals(
     if (enableMonteCarlo) {
       mcResult = runMonteCarlo(
         goal.current_saved,
-        goal.planned_monthly_contribution,
+        assigned,
         goal.horizon_months,
         baseAssumptions.nominal_annual_return,
         baseAssumptions.annual_volatility,
@@ -294,7 +286,7 @@ export function simulateGoals(
       assigned_monthly_capacity: assigned,
       monthly_capacity_gap: unfundedGap,
       capacity_status: capStatus,
-      allocated_capacity_projected_value: allocatedVal
+      allocated_capacity_projected_value: projectedBase
     });
   }
 

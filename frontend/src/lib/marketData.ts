@@ -58,19 +58,4 @@ export async function searchMF(query: string): Promise<MFSearchResult[]> {
   return res.json();
 }
 
-export interface GoldPriceResponse {
-  success: boolean;
-  currency: string;
-  unit: string;
-  prices: { "22K": number; "24K": number };
-  timestamp: string;
-  source: string;
-}
-
-export async function getGoldPrice(): Promise<GoldPriceResponse> {
-  const res = await fetch(`${api()}/api/v1/market/gold`);
-  if (!res.ok) {
-    throw new Error("Gold price unavailable. Please try again.");
-  }
-  return res.json();
-}
+// Removed gold api calls

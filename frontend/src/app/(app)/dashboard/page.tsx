@@ -6,6 +6,7 @@ import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { formatRupees } from "@/lib/formatters";
 import type { FinancialPlan, AssetCategory } from "@/types/financial-plan";
 import { UnifiedRiskFactorCard } from "@/components/results/UnifiedRiskFactorCard";
+import { SpendingAnalysis } from "@/components/dashboard/SpendingAnalysis";
 
 function formatPercent(value: number) {
   return `${Math.round(value)}%`;
@@ -110,8 +111,21 @@ export default function DashboardPage() {
             <Row label="Debt Payments" value={`- ${formatRupees(calc.totalDebtPayments)}`} />
             <div className="mt-4 border-t border-white/10 pt-4">
               <Row label="Monthly Surplus" value={formatRupees(calc.monthlySurplus)} highlight={calc.monthlySurplus > 0} />
+              {calc.totalMonthlyIncome > 0 && (
+                <div className="mt-4 rounded-xl bg-emerald-400/10 p-3 border border-emerald-400/20 text-center">
+                  <span className="font-bold text-emerald-300">
+                    {Math.round((calc.monthlySurplus / calc.totalMonthlyIncome) * 100)}% Savings Rate
+                  </span>
+                  <span className="text-emerald-200/80 text-sm ml-2">
+                    - {calc.monthlySurplus >= (calc.totalMonthlyIncome * 0.2) ? 'Excellent!' : calc.monthlySurplus > 0 ? 'On Track' : 'Needs Attention'}
+                  </span>
+                </div>
+              )}
             </div>
           </Card>
+
+          {/* 2.5 Spending Analysis */}
+          <SpendingAnalysis profile={session.profile_input} monthlySurplus={calc.monthlySurplus} />
 
           {/* 3. Emergency Fund */}
           <Card title="Emergency Fund">

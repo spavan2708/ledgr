@@ -23,7 +23,6 @@ export function syncHoldingsToProfile(
     mutual_funds: valuation.categoryValues.mutual_funds.currentValue,
     stocks_equity: valuation.categoryValues.stocks.currentValue,
     bonds_debt: valuation.categoryValues.bonds.currentValue,
-    gold: valuation.categoryValues.gold.currentValue,
     other_assets: valuation.categoryValues.other.currentValue,
   };
   

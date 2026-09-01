@@ -8,12 +8,13 @@ interface TransactionFormProps {
   unitLabel: string; // "shares", "units", "amount", "grams"
   currentPrice?: number;
   maxQuantity?: number;
+  defaultQuantity?: number;
   onSubmit: (quantity: number, price: number, date: string) => void;
   onCancel: () => void;
 }
 
-export function TransactionForm({ type, unitLabel, currentPrice, maxQuantity, onSubmit, onCancel, isFixedPrice }: TransactionFormProps & { isFixedPrice?: boolean }) {
-  const [quantity, setQuantity] = useState("");
+export function TransactionForm({ type, unitLabel, currentPrice, maxQuantity, defaultQuantity, onSubmit, onCancel, isFixedPrice }: TransactionFormProps & { isFixedPrice?: boolean }) {
+  const [quantity, setQuantity] = useState(defaultQuantity !== undefined ? defaultQuantity.toString() : "");
   const [price, setPrice] = useState(currentPrice ? currentPrice.toString() : "1");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 

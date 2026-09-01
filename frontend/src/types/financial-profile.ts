@@ -1,4 +1,4 @@
-﻿export interface FinancialProfile {
+export interface FinancialProfile {
   personal: {
     age: number;
     occupation: string;
@@ -32,7 +32,6 @@
     mutual_funds: number;
     stocks_equity: number;
     bonds_debt: number;
-    gold: number;
     other_assets: number;
   };
   liabilities: {
@@ -47,6 +46,7 @@
     market_loss_reaction: string;
     investment_horizon: string;
     income_stability: number;
+    liquidity_requirement?: string;
   };
 }
 

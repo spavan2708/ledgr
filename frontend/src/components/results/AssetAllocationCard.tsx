@@ -44,7 +44,7 @@ export function AssetAllocationCard({ allocation }: AssetAllocationCardProps) {
 
         <div className="mt-3 space-y-2">
           {allocation.entries.map(e => {
-            const name = e.assetClass === "cash" ? "Cash/Bank" : e.assetClass === "fd" ? "Fixed Deposits" : e.assetClass === "mutual_funds" ? "Mutual Funds" : e.assetClass === "stocks" ? "Stocks/Equity" : e.assetClass === "bonds" ? "Bonds/Debt" : "Gold";
+            const name = e.assetClass === "cash" ? "Cash/Bank" : e.assetClass === "fd" ? "Fixed Deposits" : e.assetClass === "mutual_funds" ? "Mutual Funds" : e.assetClass === "stocks" ? "Stocks/Equity" : "Bonds/Debt";
             const hasInvestments = !allocation.entries.every(x => x.currentPercentage === 0);
             
             return (
@@ -80,7 +80,7 @@ export function AssetAllocationCard({ allocation }: AssetAllocationCardProps) {
           <div className="space-y-2">
             {allocation.entries.map(e => {
               if (e.newMoneyAmount <= 0) return null;
-              const name = e.assetClass === "cash" ? "Cash/Bank" : e.assetClass === "fd" ? "Fixed Deposits" : e.assetClass === "mutual_funds" ? "Mutual Funds" : e.assetClass === "stocks" ? "Stocks/Equity" : e.assetClass === "bonds" ? "Bonds/Debt" : "Gold";
+              const name = e.assetClass === "cash" ? "Cash/Bank" : e.assetClass === "fd" ? "Fixed Deposits" : e.assetClass === "mutual_funds" ? "Mutual Funds" : e.assetClass === "stocks" ? "Stocks/Equity" : "Bonds/Debt";
               return (
                 <div key={e.assetClass} className="flex justify-between items-center bg-white/[0.01] border border-white/5 p-2 rounded">
                   <span className="text-sm text-slate-300">{name}</span>

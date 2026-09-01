@@ -33,7 +33,6 @@ export function calculateFinancials(profile: FinancialProfile): FinancialCalcula
     Number(a.mutual_funds || 0) + 
     Number(a.stocks_equity || 0) + 
     Number(a.bonds_debt || 0) + 
-    Number(a.gold || 0) + 
     Number(a.other_assets || 0);
 
   const l = profile.liabilities;

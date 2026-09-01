@@ -108,7 +108,7 @@ export default function SimulatorPage() {
             </div>
 
             <div className="space-y-5">
-              <InputRange label="Simulation Period" value={inputs.horizonYears} unit="years" min={5} max={30} step={5} onChange={v => setInputs({ ...inputs, horizonYears: v })} />
+              <InputRange label="Simulation Period" value={inputs.horizonYears} unit="years" min={1} max={30} step={1} onChange={v => setInputs({ ...inputs, horizonYears: v })} />
               <InputRange label="Monthly Contribution" value={inputs.monthlyContribution} unit="₹" min={0} max={Math.max(500000, baseAllocation.investableMonthlyCapacity * 3)} step={1000} onChange={v => setInputs({ ...inputs, monthlyContribution: v })} />
               <InputRange label="Annual Step-up" value={inputs.annualStepUpPct} unit="%" min={0} max={20} step={1} onChange={v => setInputs({ ...inputs, annualStepUpPct: v })} />
               <InputRange label="Expected Annual Return" value={inputs.expectedAnnualReturn} unit="%" min={1} max={20} step={1} onChange={v => setInputs({ ...inputs, expectedAnnualReturn: v })} />
@@ -134,22 +134,41 @@ export default function SimulatorPage() {
             <p className="mt-4 text-xs text-slate-500 text-center">Projected Portfolio Value over {inputs.horizonYears} years. Educational simulation only.</p>
           </Card>
 
-          {inputs.monthlyContribution !== baseAllocation.investableMonthlyCapacity && (
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6">
-              <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-4">What-if Contribution Analysis</h3>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <p className="text-sm text-slate-300">Current Plan ({formatRupees(baseAllocation.investableMonthlyCapacity)}/mo): <strong className="text-white">{formatRupees(baseSim.finalPortfolioValue)}</strong></p>
-                  <p className="text-sm text-slate-300 mt-1">Scenario ({formatRupees(inputs.monthlyContribution)}/mo): <strong className="text-emerald-400">{formatRupees(sim.finalPortfolioValue)}</strong></p>
+          {inputs.monthlyContribution !== baseAllocation.investableMonthlyCapacity && (() => {
+            const diffValue = sim.finalPortfolioValue - baseSim.finalPortfolioValue;
+            const diffContrib = inputs.monthlyContribution - baseAllocation.investableMonthlyCapacity;
+            const isNegative = diffContrib < 0;
+            
+            const formattedDiffValue = isNegative ? `−${formatRupees(Math.abs(diffValue))}` : `+${formatRupees(diffValue)}`;
+            const formattedDiffContrib = formatRupees(Math.abs(diffContrib));
+            
+            const formatLakhText = (val: number) => {
+              if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} crore`;
+              if (val >= 100000) return `₹${(val / 100000).toFixed(2)} lakh`;
+              return formatRupees(val);
+            };
+
+            const message = isNegative
+              ? `Reducing your contribution by ${formattedDiffContrib}/month could result in approximately ${formatLakhText(Math.abs(diffValue))} less portfolio value over ${inputs.horizonYears} years.`
+              : `Increasing your contribution by ${formattedDiffContrib}/month could potentially result in approximately ${formatLakhText(Math.abs(diffValue))} more portfolio value over ${inputs.horizonYears} years.`;
+
+            return (
+              <div className={`rounded-2xl border ${isNegative ? 'border-amber-500/20 bg-amber-500/5' : 'border-emerald-500/20 bg-emerald-500/5'} p-6`}>
+                <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 ${isNegative ? 'text-amber-400' : 'text-emerald-400'}`}>What-if Contribution Analysis</h3>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div>
+                    <p className="text-sm text-slate-300">Current Plan ({formatRupees(baseAllocation.investableMonthlyCapacity)}/mo): <strong className="text-white">{formatRupees(baseSim.finalPortfolioValue)}</strong></p>
+                    <p className="text-sm text-slate-300 mt-1">Scenario ({formatRupees(inputs.monthlyContribution)}/mo): <strong className={isNegative ? 'text-amber-400' : 'text-emerald-400'}>{formatRupees(sim.finalPortfolioValue)}</strong></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-400 mb-1">Difference over {inputs.horizonYears} years</p>
+                    <p className={`text-2xl font-bold ${isNegative ? 'text-amber-400' : 'text-emerald-400'}`}>{formattedDiffValue}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-slate-400 mb-1">Difference over {inputs.horizonYears} years</p>
-                  <p className="text-2xl font-bold text-emerald-400">+{formatRupees(sim.finalPortfolioValue - baseSim.finalPortfolioValue)}</p>
-                </div>
+                <p className={`mt-3 text-xs ${isNegative ? 'text-amber-400/70' : 'text-emerald-400/70'}`}>{message}</p>
               </div>
-              <p className="mt-3 text-xs text-emerald-400/70">An additional {formatRupees(inputs.monthlyContribution - baseAllocation.investableMonthlyCapacity)}/month could potentially result in this more portfolio value.</p>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="grid gap-6 md:grid-cols-2">
             <Card title="Goal Outlook & Shortfall">
@@ -215,13 +234,23 @@ export default function SimulatorPage() {
             <Card title="Projected Allocation">
               <p className="text-sm text-slate-400 mb-4">Assuming target percentages remain constant.</p>
               <div className="space-y-2 text-sm">
-                {Object.keys(sim.projectedAllocation).map(k => {
-                  if (sim.projectedAllocation[k] === 0) return null;
-                  const name = k === "cash" ? "Cash/Bank" : k === "fd" ? "Fixed Deposits" : k === "mutual_funds" ? "Mutual Funds" : k === "stocks" ? "Stocks/Equity" : k === "bonds" ? "Bonds/Debt" : "Gold";
+                {Object.keys(baseAllocation.targetAllocation).map(k => {
+                  const targetPct = baseAllocation.targetAllocation[k];
+                  const projectedAmt = (sim.finalPortfolioValue * targetPct) / 100;
+                  const nameMap: Record<string, string> = {
+                    cash: "Cash / Bank",
+                    fd: "Fixed Deposits",
+                    bonds: "Bonds / Debt",
+                    mutual_funds: "Mutual Funds",
+                    stocks: "Stocks / Equity",
+                    other: "Other Assets"
+                  };
+                  const name = nameMap[k] || k;
+                  
                   return (
-                    <div key={k} className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-slate-300">{name} <span className="text-slate-500 text-xs">({baseAllocation.targetAllocation[k].toFixed(1)}%)</span></span>
-                      <span className="font-bold text-white">{formatRupees(sim.projectedAllocation[k])}</span>
+                    <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0">
+                      <span className="text-slate-300">{name} <span className="text-slate-500 text-xs">({targetPct.toFixed(1)}%)</span></span>
+                      <span className="font-bold text-white">{formatRupees(projectedAmt)}</span>
                     </div>
                   );
                 })}

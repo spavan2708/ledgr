@@ -6,10 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { CashHolding } from "@/types/holdings";
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
 
 export default function AddCashPage() {
   const router = useRouter();
-  const { session, setHoldings } = useFinSyncSession();
+  const { session, setHoldings, setProfile } = useFinSyncSession();
   
   const [bank, setBank] = useState("");
   const [balance, setBalance] = useState("");
@@ -49,7 +51,20 @@ export default function AddCashPage() {
       updated_at: new Date().toISOString()
     };
 
-    setHoldings(editId ? session!.holdings.map(h => h.id === editId ? holding : h) : [...(session?.holdings || []), holding]);
+    const newHoldings = editId 
+      ? session!.holdings.map(h => h.id === editId ? holding : h) 
+      : [...(session?.holdings || []), holding];
+
+    setHoldings(newHoldings);
+
+    if (session?.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, session.market_data, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
     router.push("/portfolio/cash");
   };
 

@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { OtherAssetHolding } from "@/types/holdings";
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
 
 export default function AddOtherPage() {
   const router = useRouter();
-  const { session, setHoldings } = useFinSyncSession();
+  const { session, setHoldings, setProfile } = useFinSyncSession();
   
   const searchParams = useSearchParams();
   const editId = searchParams.get("editId");
@@ -57,7 +59,20 @@ export default function AddOtherPage() {
       updated_at: new Date().toISOString()
     };
 
-    setHoldings(editId ? session!.holdings.map(h => h.id === editId ? holding : h) : [...(session?.holdings || []), holding]);
+    const newHoldings = editId 
+      ? session!.holdings.map(h => h.id === editId ? holding : h) 
+      : [...(session?.holdings || []), holding];
+
+    setHoldings(newHoldings);
+
+    if (session?.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, session.market_data, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
     router.push("/portfolio/other");
   };
 
@@ -113,7 +128,7 @@ export default function AddOtherPage() {
                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current Estimated Value</label>
                <input 
                  type="text" inputMode="decimal" pattern="[0-9]*\.?[0-9]*"
-                 className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!!editId}
+                 className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-emerald-500"
                  placeholder="e.g. 15000000"
                  value={estimatedValue}
                  onChange={e => setEstimatedValue(e.target.value)}

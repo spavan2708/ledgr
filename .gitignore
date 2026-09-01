@@ -22,3 +22,5 @@ frontend/out/
 # IDE
 .vscode/
 .idea/
+
+ml_pipeline/venv/

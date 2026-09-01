@@ -1,4 +1,4 @@
-export type AssetCategoryType = "cash" | "fd" | "stocks" | "mutual_funds" | "bonds" | "gold" | "other";
+export type AssetCategoryType = "cash" | "fd" | "stocks" | "mutual_funds" | "bonds" | "other";
 
 export type ValuationSource = "LIVE_MARKET" | "LIVE_NAV" | "ACCOUNT_BALANCE" | "FORMULA" | "MANUAL";
 
@@ -66,15 +66,6 @@ export interface BondHolding extends BaseHolding {
   current_price?: number; // manual fallback
 }
 
-export interface GoldHolding extends BaseHolding {
-  asset_category: "gold";
-  gold_type: "22K" | "24K"; // Represents purity
-  quantity: number; // Legacy/Fallback (grams)
-  unit_name: string; // "grams"
-  average_purchase_price: number; // Legacy/Fallback
-  invested_value: number; // Legacy/Fallback
-}
-
 export interface CashHolding extends BaseHolding {
   asset_category: "cash";
   institution?: string;
@@ -90,7 +81,7 @@ export interface OtherAssetHolding extends BaseHolding {
   purchase_value?: number; // Legacy/Fallback
 }
 
-export type AnyHolding = StockHolding | MutualFundHolding | FixedDepositHolding | BondHolding | GoldHolding | CashHolding | OtherAssetHolding;
+export type AnyHolding = StockHolding | MutualFundHolding | FixedDepositHolding | BondHolding | CashHolding | OtherAssetHolding;
 
 // Market Data Cache Types
 export interface MarketDataCache {

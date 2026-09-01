@@ -6,42 +6,65 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { FixedDepositHolding } from "@/types/holdings";
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
+
+function toInputDateString(dateStr?: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().split("T")[0];
+}
 
 export default function AddFDPage() {
   const router = useRouter();
-  const { session, setHoldings } = useFinSyncSession();
+  const { session, setHoldings, setProfile } = useFinSyncSession();
   
   const searchParams = useSearchParams();
   const editId = searchParams.get("editId");
+
+  const [institution, setInstitution] = useState("");
+  const [principal, setPrincipal] = useState("");
+  const [rate, setRate] = useState("");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [maturityDate, setMaturityDate] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().split("T")[0];
+  });
+  const [accruedInterest, setAccruedInterest] = useState("");
+  const [compounding, setCompounding] = useState<"monthly" | "quarterly" | "half_yearly" | "yearly" | "at_maturity">("quarterly");
 
   useEffect(() => {
     if (editId && session?.holdings) {
       const existing = session.holdings.find(h => h.id === editId) as any;
       if (existing) {
-        setInstitution(existing.institution);
-        setPrincipal(existing.principal.toString());
-        setRate(existing.interest_rate.toString());
-        if (existing.start_date) setStartDate(existing.start_date.split("T")[0]);
-        if (existing.maturity_date) setMaturityDate(existing.maturity_date.split("T")[0]);
-        if (existing.accrued_interest) setAccruedInterest(existing.accrued_interest.toString());
-        setCompounding(existing.compounding_frequency);
+        setInstitution(existing.institution || "");
+        setPrincipal(existing.principal ? existing.principal.toString() : "");
+        setRate(existing.interest_rate ? existing.interest_rate.toString() : "");
+        setStartDate(toInputDateString(existing.start_date));
+        setMaturityDate(toInputDateString(existing.maturity_date));
+        if (existing.accrued_interest !== undefined && existing.accrued_interest !== null) {
+          setAccruedInterest(existing.accrued_interest.toString());
+        }
+        setCompounding(existing.compounding_frequency || "quarterly");
       }
     }
   }, [editId, session?.holdings]);
-
-  const [institution, setInstitution] = useState("");
-  const [principal, setPrincipal] = useState("");
-  const [rate, setRate] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [maturityDate, setMaturityDate] = useState("");
-  const [accruedInterest, setAccruedInterest] = useState("");
-  const [compounding, setCompounding] = useState<"monthly" | "quarterly" | "half_yearly" | "yearly" | "at_maturity">("quarterly");
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!institution || !principal || !rate || !startDate || !maturityDate) return;
     
-    if (new Date(maturityDate) <= new Date(startDate)) {
+    const startObj = new Date(startDate);
+    const maturityObj = new Date(maturityDate);
+
+    if (isNaN(startObj.getTime()) || isNaN(maturityObj.getTime())) {
+      alert("Please select valid dates.");
+      return;
+    }
+
+    if (maturityObj <= startObj) {
       alert("Maturity date must be after the start date.");
       return;
     }
@@ -62,17 +85,32 @@ export default function AddFDPage() {
       institution,
       principal: p,
       interest_rate: r,
-      start_date: new Date(startDate).toISOString(),
-      maturity_date: new Date(maturityDate).toISOString(),
+      start_date: startObj.toISOString(),
+      maturity_date: maturityObj.toISOString(),
       compounding_frequency: compounding,
       accrued_interest: ai,
       status: "active",
       created_at: new Date().toISOString(),
-      transactions: editId && session?.holdings.find(h => h.id === editId) ? (session.holdings.find(h => h.id === editId) as any).transactions || [] : [{ id: crypto.randomUUID(), date: new Date(startDate).toISOString(), type: 'deposit', quantity: p, price: 1 }],
+      transactions: editId && session?.holdings.find(h => h.id === editId) 
+        ? (session.holdings.find(h => h.id === editId) as any).transactions || [] 
+        : [{ id: crypto.randomUUID(), date: startObj.toISOString(), type: 'deposit', quantity: p, price: 1 }],
       updated_at: new Date().toISOString()
     };
 
-    setHoldings(editId ? session!.holdings.map(h => h.id === editId ? holding : h) : [...(session?.holdings || []), holding]);
+    const newHoldings = editId 
+      ? session!.holdings.map(h => h.id === editId ? holding : h) 
+      : [...(session?.holdings || []), holding];
+
+    setHoldings(newHoldings);
+
+    if (session?.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, session.market_data, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
     router.push("/portfolio/fd");
   };
 

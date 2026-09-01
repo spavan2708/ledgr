@@ -124,9 +124,8 @@ export function extractMLPipelineFeatures(
   const mutual_funds = Number(profile.assets.mutual_funds);
   const stocks_equity = Number(profile.assets.stocks_equity);
   const bonds_debt = Number(profile.assets.bonds_debt);
-  const gold = Number(profile.assets.gold);
   
-  const investment_assets = fd + mutual_funds + stocks_equity + bonds_debt + gold;
+  const investment_assets = fd + mutual_funds + stocks_equity + bonds_debt;
   const total_assets = liquid_savings + investment_assets + Number(profile.assets.other_assets);
 
   // Ratios
@@ -136,7 +135,7 @@ export function extractMLPipelineFeatures(
 
   // Asset Percentages
   let cash_percentage = 0, fd_percentage = 0, debt_percentage = 0;
-  let mutual_fund_percentage = 0, equity_percentage = 0, gold_percentage = 0;
+  let mutual_fund_percentage = 0, equity_percentage = 0;
 
   if (total_assets > 0) {
     cash_percentage = (liquid_savings / total_assets) * 100;
@@ -144,7 +143,6 @@ export function extractMLPipelineFeatures(
     debt_percentage = (bonds_debt / total_assets) * 100;
     mutual_fund_percentage = (mutual_funds / total_assets) * 100;
     equity_percentage = (stocks_equity / total_assets) * 100;
-    gold_percentage = (gold / total_assets) * 100;
   }
 
   // Goals
@@ -183,7 +181,7 @@ export function extractMLPipelineFeatures(
     debt_percentage,
     mutual_fund_percentage,
     equity_percentage,
-    gold_percentage,
+    gold_percentage: 0, // Legacy fallback for ML backend
     monthly_surplus,
     debt_to_income_ratio,
     debt_to_asset_ratio,

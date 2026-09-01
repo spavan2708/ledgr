@@ -22,7 +22,7 @@ const INITIAL_PROFILE: FinancialProfile = {
     shopping: 0, dining_out: 0, entertainment: 0, subscriptions: 0, travel_leisure: 0, other_discretionary: 0,
     monthly_debt_payments: 0, existing_monthly_investments: 0,
   },
-  assets: { cash_bank: 0, fd: 0, mutual_funds: 0, stocks_equity: 0, bonds_debt: 0, gold: 0, other_assets: 0 },
+  assets: { cash_bank: 0, fd: 0, mutual_funds: 0, stocks_equity: 0, bonds_debt: 0, other_assets: 0 },
   liabilities: { outstanding_loans: 0, other_liabilities: 0 },
   safety: { emergency_savings: 0 },
   risk: { investment_experience: "None", market_loss_reaction: "Hold and wait", investment_horizon: "2–5 years", income_stability: 3 },

@@ -6,25 +6,22 @@ const TARGET_ALLOCATIONS = {
     cash: 10,
     fd: 30,
     bonds: 30,
-    mutual_funds: 20,
-    stocks: 5,
-    gold: 5
+    mutual_funds: 25,
+    stocks: 10
   },
   Moderate: {
     cash: 5,
     fd: 15,
     bonds: 20,
-    mutual_funds: 40,
-    stocks: 15,
-    gold: 5
+    mutual_funds: 45,
+    stocks: 20
   },
   Growth: {
     cash: 5,
     fd: 5,
     bonds: 10,
-    mutual_funds: 45,
-    stocks: 30,
-    gold: 5
+    mutual_funds: 55,
+    stocks: 30
   }
 };
 
@@ -33,15 +30,14 @@ export function analyzeAllocation(profile: FinancialProfile, calc: FinancialCalc
   
   const a = profile.assets;
   // Calculate total main investable assets (excluding "other" to avoid distortion)
-  const investableTotal = Number(a.cash_bank || 0) + Number(a.fd || 0) + Number(a.bonds_debt || 0) + Number(a.mutual_funds || 0) + Number(a.stocks_equity || 0) + Number(a.gold || 0);
+  const investableTotal = Number(a.cash_bank || 0) + Number(a.fd || 0) + Number(a.bonds_debt || 0) + Number(a.mutual_funds || 0) + Number(a.stocks_equity || 0);
   
   const currentValues = {
     cash: Number(a.cash_bank || 0),
     fd: Number(a.fd || 0),
     bonds: Number(a.bonds_debt || 0),
     mutual_funds: Number(a.mutual_funds || 0),
-    stocks: Number(a.stocks_equity || 0),
-    gold: Number(a.gold || 0)
+    stocks: Number(a.stocks_equity || 0)
   };
   
   const currentAllocation: Record<string, number> = {};

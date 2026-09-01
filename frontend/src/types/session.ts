@@ -15,7 +15,19 @@ export interface SessionContext {
   goal_simulation: GoalSimulationResponse | null; 
   holdings: AnyHolding[];
   market_data: Record<string, MarketDataCache>;
-  gold_data?: any; // To store GoldPriceResponse from marketData.ts
 }
 export type ProfileStatus = "new" | "in_progress" | "review" | "completed" | "editing";
-export interface FinSyncSession extends SessionContext { version: 1; session_id: string; conversation: ConversationMessage[]; proposals: AgentProposal[]; last_onboarding_step?: number; profile_status?: ProfileStatus; }
+export type TutorLevel = "BEGINNER" | "MODERATE" | "ADVANCED";
+export interface FinSyncSession extends SessionContext { 
+  version: 1; 
+  session_id: string; 
+  conversation: ConversationMessage[]; 
+  proposals: AgentProposal[]; 
+  last_onboarding_step?: number; 
+  profile_status?: ProfileStatus; 
+  tutor_completed_lessons?: string[];
+  tutor_quiz_scores?: Record<string, number>;
+  tutor_assessment_scores?: Record<string, number>;
+  tutor_assessment_attempts?: Record<string, number>;
+  tutor_unlocked_level?: TutorLevel;
+}

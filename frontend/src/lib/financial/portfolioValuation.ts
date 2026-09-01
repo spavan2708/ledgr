@@ -23,22 +23,45 @@ export interface PortfolioValuationResult {
 
 function computeLedger(transactions: HoldingTransaction[] | undefined, defaultQuantity: number, defaultInvested: number) {
   if (!transactions || transactions.length === 0) {
-    return { qty: defaultQuantity, invested: defaultInvested };
+    return { qty: defaultQuantity, invested: defaultInvested, realizedGain: 0 };
   }
   let qty = 0;
   let invested = 0;
-  // Chronological sorting assumed or should sort by date here
-  const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  let realizedGain = 0;
+  
+  const typeWeight: Record<string, number> = {
+    "buy": 1,
+    "deposit": 1,
+    "reinvest": 1,
+    "interest": 2,
+    "sell": 3,
+    "withdraw": 3,
+    "maturity": 4
+  };
+
+  const sorted = [...transactions].sort((a, b) => {
+    const dA = new Date(a.date).toISOString().split('T')[0];
+    const dB = new Date(b.date).toISOString().split('T')[0];
+    if (dA === dB) {
+      return (typeWeight[a.type] || 9) - (typeWeight[b.type] || 9);
+    }
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
   
   for (const tx of sorted) {
     if (tx.type === "buy" || tx.type === "deposit" || tx.type === "reinvest") {
       qty += tx.quantity;
       invested += tx.quantity * tx.price;
-    } else if (tx.type === "sell" || tx.type === "withdraw" || tx.type === "maturity") {
+    } else if (tx.type === "maturity") {
+      realizedGain += (tx.quantity * tx.price) - invested;
+      qty = 0;
+      invested = 0;
+    } else if (tx.type === "sell" || tx.type === "withdraw") {
       if (qty > 0) {
         const avgCost = invested / qty;
         qty -= tx.quantity;
         invested -= tx.quantity * avgCost;
+        realizedGain += tx.quantity * (tx.price - avgCost);
       } else {
         qty -= tx.quantity;
       }
@@ -54,15 +77,18 @@ function computeLedger(transactions: HoldingTransaction[] | undefined, defaultQu
     invested = 0;
   }
   
-  return { qty, invested };
+  return { qty, invested, realizedGain };
 }
 
 function computeCompoundInterest(principal: number, rate: number, startDate: string, maturityDate: string, frequency: string): number {
+  if (!startDate || !maturityDate) return 0;
   const start = new Date(startDate);
   const maturity = new Date(maturityDate);
+  if (isNaN(start.getTime()) || isNaN(maturity.getTime())) return 0;
+
   let now = new Date();
   
-  if (now > maturity) {
+  if (now >= maturity) {
     now = maturity;
   }
   
@@ -73,22 +99,19 @@ function computeCompoundInterest(principal: number, rate: number, startDate: str
   else if (frequency === "quarterly") n = 4;
   else if (frequency === "half_yearly") n = 2;
   else if (frequency === "at_maturity") {
-    // Treat as simple interest or compounded annually depending on bank rules, usually simple or annual
-    // Here we use simple interest for strictly "at_maturity" if not compounded, 
-    // but in India "cumulative" FD is compounded quarterly. We will assume simple if literally at_maturity without compounding info.
     const days = (now.getTime() - start.getTime()) / (1000 * 3600 * 24);
     return principal * (rate / 100) * (days / 365);
   }
   
-  const years = (now.getTime() - start.getTime()) / (1000 * 3600 * 24 * 365.25);
+  const days = (now.getTime() - start.getTime()) / (1000 * 3600 * 24);
+  const years = days / 365;
   const amount = principal * Math.pow(1 + (rate / 100) / n, n * years);
   return Math.max(0, amount - principal);
 }
 
 export function calculatePortfolioValuation(
   holdings: AnyHolding[],
-  marketData: Record<string, MarketDataCache>,
-  goldData?: { prices: { "22K": number; "24K": number } }
+  marketData: Record<string, MarketDataCache>
 ): PortfolioValuationResult {
   let totalCurrentValue = 0;
   let totalInvestedValue = 0; // Won't include cash
@@ -99,7 +122,6 @@ export function calculatePortfolioValuation(
     bonds: { currentValue: 0, investedValue: 0, gainLoss: 0, gainLossPercentage: 0 },
     mutual_funds: { currentValue: 0, investedValue: 0, gainLoss: 0, gainLossPercentage: 0 },
     stocks: { currentValue: 0, investedValue: 0, gainLoss: 0, gainLossPercentage: 0 },
-    gold: { currentValue: 0, investedValue: 0, gainLoss: 0, gainLossPercentage: 0 },
     other: { currentValue: 0, investedValue: 0, gainLoss: 0, gainLossPercentage: 0 }
   };
 
@@ -107,6 +129,7 @@ export function calculatePortfolioValuation(
     let currentValue = 0;
     let investedValue = 0;
     let calculatedQuantity = 0;
+    let realizedGain = 0;
 
     switch (holding.asset_category) {
       case "cash": {
@@ -115,12 +138,14 @@ export function calculatePortfolioValuation(
         currentValue = ledger.qty;
         // Cash is an ACCOUNT BALANCE. It has no investment cost basis.
         investedValue = 0; 
+        realizedGain = ledger.realizedGain;
         break;
       }
       case "fd": {
         const ledger = computeLedger(holding.transactions, holding.principal, holding.principal);
         calculatedQuantity = ledger.qty;
         investedValue = ledger.invested;
+        realizedGain = ledger.realizedGain;
         
         let accruedInterest = 0;
         if (holding.status === "active" || holding.status === "matured") {
@@ -137,6 +162,7 @@ export function calculatePortfolioValuation(
         const ledger = computeLedger(holding.transactions, holding.quantity, holding.invested_value);
         calculatedQuantity = ledger.qty;
         investedValue = ledger.invested;
+        realizedGain = ledger.realizedGain;
         
         const price = marketData[holding.ticker]?.current_price || (investedValue > 0 && calculatedQuantity > 0 ? investedValue / calculatedQuantity : holding.average_purchase_price);
         currentValue = calculatedQuantity * price;
@@ -146,43 +172,53 @@ export function calculatePortfolioValuation(
         const ledger = computeLedger(holding.transactions, holding.units, holding.invested_value);
         calculatedQuantity = ledger.qty;
         investedValue = ledger.invested;
+        realizedGain = ledger.realizedGain;
         
         const price = marketData[holding.scheme]?.current_price || (investedValue > 0 && calculatedQuantity > 0 ? investedValue / calculatedQuantity : holding.average_purchase_nav);
         currentValue = calculatedQuantity * price;
         break;
       }
-      case "gold": {
-        const ledger = computeLedger(holding.transactions, holding.quantity, holding.invested_value);
-        calculatedQuantity = ledger.qty;
-        investedValue = ledger.invested;
-        
-        const purity = (holding as any).gold_type;
-        const livePrice = goldData && goldData.prices && (purity === "22K" || purity === "24K") ? goldData.prices[purity] : 0;
-        const price = livePrice > 0 ? livePrice : ((investedValue > 0 && calculatedQuantity > 0) ? investedValue / calculatedQuantity : (holding as any).average_purchase_price || 0);
-        
-        currentValue = calculatedQuantity * price;
-        break;
-      }
+
       case "bonds": {
         const ledger = computeLedger(holding.transactions, holding.quantity, holding.quantity * holding.purchase_price);
         calculatedQuantity = ledger.qty;
         investedValue = ledger.invested;
+        realizedGain = ledger.realizedGain;
         
-        // Manual/formula approach. Do not hallucinate market data.
-        const price = holding.current_price || holding.purchase_price || (investedValue > 0 && calculatedQuantity > 0 ? investedValue / calculatedQuantity : 0);
-        currentValue = calculatedQuantity * price;
+        let accruedCoupon = 0;
+        let estimatedPrincipal = holding.current_price || holding.face_value || holding.purchase_price || 0;
+        
+        if (holding.purchase_date) {
+           const start = new Date(holding.purchase_date);
+           let now = new Date();
+           if (holding.maturity_date) {
+             const maturity = new Date(holding.maturity_date);
+             if (now >= maturity) {
+               now = maturity;
+               estimatedPrincipal = holding.face_value || estimatedPrincipal;
+             }
+           }
+           if (holding.coupon_rate && holding.face_value && now > start) {
+              const days = (now.getTime() - start.getTime()) / (1000 * 3600 * 24);
+              const annualCouponPerUnit = holding.face_value * (holding.coupon_rate / 100);
+              accruedCoupon = annualCouponPerUnit * calculatedQuantity * (days / 365);
+           }
+        }
+        
+        currentValue = (calculatedQuantity * estimatedPrincipal) + accruedCoupon;
         break;
       }
       case "other": {
         const ledger = computeLedger(holding.transactions, 1, holding.purchase_value || holding.estimated_value);
         calculatedQuantity = ledger.qty;
         investedValue = ledger.invested;
+        realizedGain = ledger.realizedGain;
         currentValue = holding.estimated_value;
         break;
       }
     }
 
-    const gainLoss = holding.asset_category === "cash" ? 0 : currentValue - investedValue;
+    const gainLoss = holding.asset_category === "cash" ? 0 : (currentValue - investedValue) + realizedGain;
     const gainLossPercentage = (holding.asset_category !== "cash" && investedValue > 0) ? (gainLoss / investedValue) * 100 : 0;
 
     totalCurrentValue += currentValue;
@@ -215,13 +251,17 @@ export function calculatePortfolioValuation(
     totalGainLoss += cat.gainLoss;
   }
 
-  const totalGainLossPercentage = totalInvestedValue > 0 ? (totalGainLoss / totalInvestedValue) * 100 : 0;
+  // Round totals to ensure mathematically cohesive rendering in the UI since the UI formats without fractions
+  const finalInvested = Math.round(totalInvestedValue);
+  const finalCurrent = Math.round(totalCurrentValue);
+  const finalGainLoss = finalCurrent - finalInvested;
+  const finalGainLossPercentage = finalInvested > 0 ? (finalGainLoss / finalInvested) * 100 : 0;
 
   return {
-    totalCurrentValue,
-    totalInvestedValue,
-    totalGainLoss,
-    totalGainLossPercentage,
+    totalCurrentValue: finalCurrent,
+    totalInvestedValue: finalInvested,
+    totalGainLoss: finalGainLoss,
+    totalGainLossPercentage: finalGainLossPercentage,
     categoryValues,
     holdingsWithValuation
   };

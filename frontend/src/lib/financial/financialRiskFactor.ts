@@ -85,9 +85,9 @@ export function calculateUnifiedRiskFactor(
 
   // 4. RISK FACTOR (1-10) AND CATEGORY
   // Convert 0-100 to 1-10 linearly.
-  // 1-100 -> / 10 -> Math.ceil to get 1-10.
+  // 52.6 / 10 = 5.26 -> Math.round -> 5
   // Exception: 0 should be 1.
-  let riskFactor = Math.ceil(finalScore / 10);
+  let riskFactor = Math.round(finalScore / 10);
   if (riskFactor < 1) riskFactor = 1;
   if (riskFactor > 10) riskFactor = 10;
 

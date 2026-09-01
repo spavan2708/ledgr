@@ -56,15 +56,8 @@ export default function ManagePortfolioPage() {
            <div className="text-2xl opacity-50">📜</div>
          </Link>
          
-         <Link href="/portfolio/add/gold" className="flex items-center p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition group">
-           <div className="flex-1">
-             <div className="font-bold text-white group-hover:text-yellow-400 transition">Gold</div>
-             <div className="text-xs text-slate-400 mt-1">Physical & Digital</div>
-           </div>
-           <div className="text-2xl opacity-50">🪙</div>
-         </Link>
-         
-         <Link href="/portfolio/add/other" className="flex items-center p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition group sm:col-span-2">
+
+         <Link href="/portfolio/add/other" className="flex items-center p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition group">
            <div className="flex-1">
              <div className="font-bold text-white group-hover:text-slate-300 transition">Other Asset</div>
              <div className="text-xs text-slate-400 mt-1">Property, Collectibles, Manual Valuation</div>

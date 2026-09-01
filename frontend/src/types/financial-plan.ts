@@ -48,7 +48,7 @@ export interface RiskProfileAnalysis {
 }
 
 export interface AssetCategory {
-  id: "cash" | "fd" | "bonds" | "mutual_funds" | "stocks" | "gold";
+  id: "cash" | "fd" | "bonds" | "mutual_funds" | "stocks";
   name: string;
 }
 

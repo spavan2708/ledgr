@@ -14,9 +14,8 @@ export default function PortfolioPage() {
   const plan = session?.financial_plan;
   const holdings = session?.holdings || [];
   const marketData = session?.market_data || {};
-  const goldData = session?.gold_data;
 
-  const valuation = calculatePortfolioValuation(holdings, marketData, goldData);
+  const valuation = calculatePortfolioValuation(holdings, marketData);
   const totalValue = valuation.totalCurrentValue;
 
   const categoryColors: Record<AssetCategoryType, string> = {
@@ -24,7 +23,6 @@ export default function PortfolioPage() {
     mutual_funds: "#8b5cf6", // purple
     fd: "#f59e0b", // amber
     bonds: "#10b981", // emerald
-    gold: "#eab308", // yellow
     cash: "#64748b", // slate
     other: "#a8a29e" // stone
   };
@@ -34,7 +32,6 @@ export default function PortfolioPage() {
     mutual_funds: "Mutual Funds",
     fd: "Fixed Deposits",
     bonds: "Bonds / Debt",
-    gold: "Gold",
     cash: "Cash / Bank",
     other: "Other Assets"
   };
@@ -130,32 +127,40 @@ export default function PortfolioPage() {
               <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 shadow-sm">
                 <h2 className="mb-5 font-bold text-emerald-300 uppercase tracking-widest text-sm">Target vs Current</h2>
                 <div className="space-y-3">
-                  {(Object.keys(plan.assetAllocation.targetAllocation) as AssetCategoryType[]).map(key => {
-                    const targetPct = plan.assetAllocation!.targetAllocation[key];
-                    if (targetPct === 0 && (!slices.find(s => s.id === key))) return null;
+                  {(() => {
+                    const keys = Object.keys(plan.assetAllocation.targetAllocation) as AssetCategoryType[];
+                    const validKeys = keys.filter(k => categoryNames[k]);
                     
-                    const currentPct = totalValue > 0 ? (valuation.categoryValues[key].currentValue / totalValue) * 100 : 0;
-                    const diff = currentPct - targetPct;
-                    
-                    return (
-                      <div key={key} className="flex flex-col gap-1 py-2 border-b border-white/5 last:border-0">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-300">{categoryNames[key]}</span>
-                          <span className="text-slate-500 text-xs">Target: {targetPct.toFixed(1)}%</span>
+                    return validKeys.map(key => {
+                      const targetPct = plan.assetAllocation!.targetAllocation[key];
+                      const categoryData = valuation.categoryValues[key];
+                      const categoryName = categoryNames[key];
+                      
+                      if (targetPct === 0 && (!slices.find(s => s.id === key))) return null;
+                      
+                      const currentPct = (totalValue > 0 && categoryData) ? (categoryData.currentValue / totalValue) * 100 : 0;
+                      const diff = currentPct - targetPct;
+                      
+                      return (
+                        <div key={key} className="flex flex-col gap-1 py-2 border-b border-white/5 last:border-0">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-300">{categoryName}</span>
+                            <span className="text-slate-500 text-xs">Target: {targetPct.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between text-xs items-center mt-1">
+                            <span className="font-bold text-white">{currentPct.toFixed(1)}%</span>
+                            {Math.abs(diff) > 2 ? (
+                              <span className={diff > 0 ? "text-amber-400" : "text-sky-400"}>
+                                {diff > 0 ? "Overweight" : "Underweight"} ({Math.abs(diff).toFixed(1)}%)
+                              </span>
+                            ) : (
+                              <span className="text-emerald-400">Near Target</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex justify-between text-xs items-center mt-1">
-                          <span className="font-bold text-white">{currentPct.toFixed(1)}%</span>
-                          {Math.abs(diff) > 2 ? (
-                            <span className={diff > 0 ? "text-amber-400" : "text-sky-400"}>
-                              {diff > 0 ? "Overweight" : "Underweight"} ({Math.abs(diff).toFixed(1)}%)
-                            </span>
-                          ) : (
-                            <span className="text-emerald-400">Near Target</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               </section>
             )}

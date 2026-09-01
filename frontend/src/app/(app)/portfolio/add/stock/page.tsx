@@ -8,9 +8,12 @@ import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { StockHolding } from "@/types/holdings";
 import { searchStocks, getStockQuote, SearchResult, QuoteResponse } from "@/lib/marketData";
 
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
+
 export default function AddStockPage() {
   const router = useRouter();
-  const { session, setHoldings, updateMarketData } = useFinSyncSession();
+  const { session, setHoldings, setProfile, updateMarketData } = useFinSyncSession();
   
   const searchParams = useSearchParams();
   const editId = searchParams.get("editId");
@@ -105,7 +108,20 @@ export default function AddStockPage() {
       updated_at: new Date().toISOString()
     };
 
-    setHoldings(editId ? session!.holdings.map(h => h.id === editId ? holding : h) : [...(session?.holdings || []), holding]);
+    const newHoldings = editId 
+      ? session!.holdings.map(h => h.id === editId ? holding : h) 
+      : [...(session?.holdings || []), holding];
+
+    setHoldings(newHoldings);
+
+    if (session?.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, session.market_data, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
     router.push("/portfolio/stocks");
   };
 
@@ -177,32 +193,32 @@ export default function AddStockPage() {
            )}
 
            <div className="grid gap-4 md:grid-cols-2">
-             <div>
-               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Quantity Held {editId && "(Edit via transactions)"}</label>
-               <input 
-                 type="number" 
-                 className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed" disabled={!!editId}
-                 placeholder="e.g. 20"
-                 value={quantity}
-                 onChange={e => setQuantity(e.target.value)}
-                 min="0.0001"
-                 step="any"
-                 disabled={!!editId}
-               />
-             </div>
-             <div>
-               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Average Purchase Price {editId && "(Edit via transactions)"}</label>
-               <input 
-                 type="number" 
-                 className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed" disabled={!!editId}
-                 placeholder="e.g. 1200"
-                 value={avgPrice}
-                 onChange={e => setAvgPrice(e.target.value)}
-                 min="0.01"
-                 step="any"
-                 disabled={!!editId}
-               />
-             </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Quantity Held {editId && "(Edit via transactions)"}</label>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="e.g. 20"
+                  value={quantity}
+                  onChange={e => setQuantity(e.target.value)}
+                  min="0.0001"
+                  step="any"
+                  disabled={!!editId}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Average Purchase Price {editId && "(Edit via transactions)"}</label>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="e.g. 1200"
+                  value={avgPrice}
+                  onChange={e => setAvgPrice(e.target.value)}
+                  min="0.01"
+                  step="any"
+                  disabled={!!editId}
+                />
+              </div>
            </div>
 
            {quantity && avgPrice && (

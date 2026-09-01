@@ -8,9 +8,12 @@ import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { MutualFundHolding } from "@/types/holdings";
 import { searchMF, getMFNav, MFSearchResult, MFQuoteResponse } from "@/lib/marketData";
 
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
+
 export default function AddMFPage() {
   const router = useRouter();
-  const { session, setHoldings, updateMarketData } = useFinSyncSession();
+  const { session, setHoldings, setProfile, updateMarketData } = useFinSyncSession();
   
   const searchParams = useSearchParams();
   const editId = searchParams.get("editId");
@@ -103,7 +106,20 @@ export default function AddMFPage() {
       updated_at: new Date().toISOString()
     };
 
-    setHoldings(editId ? session!.holdings.map(h => h.id === editId ? holding : h) : [...(session?.holdings || []), holding]);
+    const newHoldings = editId 
+      ? session!.holdings.map(h => h.id === editId ? holding : h) 
+      : [...(session?.holdings || []), holding];
+
+    setHoldings(newHoldings);
+
+    if (session?.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, session.market_data, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
     router.push("/portfolio/mutual_funds");
   };
 

@@ -1,17 +1,20 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { formatRupees } from "@/lib/formatters";
 import { calculatePortfolioValuation } from "@/lib/financial/portfolioValuation";
 import type { AssetCategoryType, AnyHolding } from "@/types/holdings";
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
 
 export default function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = use(params);
   const router = useRouter();
-  const { session } = useFinSyncSession();
+  const { session, setHoldings, setProfile } = useFinSyncSession();
+  const [deleteTarget, setDeleteTarget] = useState<AnyHolding | null>(null);
 
   const holdings = session?.holdings || [];
   const marketData = session?.market_data || {};
@@ -31,9 +34,24 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
     mutual_funds: "Mutual Funds",
     fd: "Fixed Deposits",
     bonds: "Bonds / Debt",
-    gold: "Gold",
+
     cash: "Cash / Bank",
     other: "Other Assets"
+  };
+
+  const handleDeleteHolding = (holding: AnyHolding) => {
+    if (!session) return;
+    const newHoldings = holdings.filter(h => h.id !== holding.id);
+    setHoldings(newHoldings);
+
+    if (session.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, marketData, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+    setDeleteTarget(null);
   };
 
   return (
@@ -93,42 +111,37 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                   {h.asset_category === 'stocks' && (
                     <>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Quantity</div><div className="text-sm font-semibold text-slate-200">{h.quantity}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Quantity Held</div><div className="text-sm font-semibold text-slate-200">{h.calculatedQuantity}</div></div>
                       <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Current Price</div><div className="text-sm font-semibold text-white">{formatRupees(marketData[h.ticker]?.current_price || h.average_purchase_price)}</div></div>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Invested</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.invested_value)}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Cost Basis</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.calculatedInvested)}</div></div>
                       <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Current Value</div><div className="text-sm font-semibold text-emerald-300">{formatRupees(h.currentValue)}</div></div>
                     </>
                   )}
                   {h.asset_category === 'mutual_funds' && (
                     <>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Units</div><div className="text-sm font-semibold text-slate-200">{h.units}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Units Held</div><div className="text-sm font-semibold text-slate-200">{h.calculatedQuantity}</div></div>
                       <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Latest NAV</div><div className="text-sm font-semibold text-white">{formatRupees(marketData[h.scheme]?.current_price || h.average_purchase_nav)}</div></div>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Invested</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.invested_value)}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Cost Basis</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.calculatedInvested)}</div></div>
                       <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Current Value</div><div className="text-sm font-semibold text-emerald-300">{formatRupees(h.currentValue)}</div></div>
                     </>
                   )}
                   {h.asset_category === 'cash' && (
-                     <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Balance</div><div className="text-sm font-semibold text-white">{formatRupees(h.balance)}</div></div>
+                     <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Balance</div><div className="text-sm font-semibold text-white">{formatRupees(h.currentValue)}</div></div>
                   )}
                   {h.asset_category === 'fd' && (
                     <>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Principal</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.principal)}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Principal</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.calculatedInvested)}</div></div>
                       <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Interest</div><div className="text-sm font-semibold text-slate-200">{h.interest_rate}%</div></div>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Maturity</div><div className="text-sm font-semibold text-white">{h.maturity_date}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Maturity</div><div className="text-sm font-semibold text-white">{h.maturity_date ? new Date(h.maturity_date).toLocaleDateString() : 'N/A'}</div></div>
                     </>
                   )}
                   {h.asset_category === 'bonds' && (
                      <>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Quantity</div><div className="text-sm font-semibold text-slate-200">{h.quantity}</div></div>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Invested</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.quantity * h.purchase_price)}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Quantity Held</div><div className="text-sm font-semibold text-slate-200">{h.calculatedQuantity}</div></div>
+                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Invested / Cost Basis</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.calculatedInvested)}</div></div>
                      </>
                   )}
-                  {h.asset_category === 'gold' && (
-                     <>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Quantity</div><div className="text-sm font-semibold text-slate-200">{h.quantity} {h.unit_name}</div></div>
-                      <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Type</div><div className="text-sm font-semibold text-slate-300 capitalize">{h.gold_type}</div></div>
-                     </>
-                  )}
+
                   {h.asset_category === 'other' && (
                      <>
                       <div><div className="text-[10px] text-slate-500 uppercase tracking-wider">Est Value</div><div className="text-sm font-semibold text-slate-300">{formatRupees(h.estimated_value)}</div></div>
@@ -152,12 +165,49 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
                 </div>
                 <div className="flex gap-2">
                   <Link href={`/portfolio/${catKey}/${h.id}`} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors">Details</Link>
+                    <button 
+                      onClick={() => setDeleteTarget(h)} 
+                      className="border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
+                    >
+                      Delete
+                    </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-400">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-xl font-bold text-white">Delete Investment</h3>
+            </div>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-white">{deleteTarget.name}</strong>? This action cannot be undone and will permanently remove this holding and all associated transaction history.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="secondary-button text-xs py-2 px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteHolding(deleteTarget)}
+                className="bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-lg text-xs py-2 px-4 transition-colors"
+              >
+                Permanently Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

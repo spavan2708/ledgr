@@ -6,10 +6,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
 import { BondHolding } from "@/types/holdings";
+import { syncHoldingsToProfile } from "@/lib/financial/syncHoldings";
+import { generateFinancialPlan } from "@/lib/financial/engine";
+
+function toInputDateString(dateStr?: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().split("T")[0];
+}
 
 export default function AddBondPage() {
   const router = useRouter();
-  const { session, setHoldings } = useFinSyncSession();
+  const { session, setHoldings, setProfile } = useFinSyncSession();
   
   const searchParams = useSearchParams();
   const editId = searchParams.get("editId");
@@ -23,8 +32,8 @@ export default function AddBondPage() {
         setPurchasePrice(existing.purchase_price.toString());
         setFaceValue(existing.face_value.toString());
         if (existing.coupon_rate) setCouponRate(existing.coupon_rate.toString());
-        if (existing.purchase_date) setPurchaseDate(existing.purchase_date.split("T")[0]);
-        if (existing.maturity_date) setMaturityDate(existing.maturity_date.split("T")[0]);
+        if (existing.purchase_date) setPurchaseDate(toInputDateString(existing.purchase_date));
+        if (existing.maturity_date) setMaturityDate(toInputDateString(existing.maturity_date));
         if (existing.current_price) setCurrentPrice(existing.current_price.toString());
       }
     }
@@ -36,7 +45,11 @@ export default function AddBondPage() {
   const [faceValue, setFaceValue] = useState("");
   const [couponRate, setCouponRate] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
-  const [maturityDate, setMaturityDate] = useState("");
+  const [maturityDate, setMaturityDate] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().split("T")[0];
+  });
   const [currentPrice, setCurrentPrice] = useState("");
 
   const handleSave = (e: React.FormEvent) => {
@@ -76,7 +89,20 @@ export default function AddBondPage() {
       updated_at: new Date().toISOString()
     };
 
-    setHoldings(editId ? session!.holdings.map(h => h.id === editId ? holding : h) : [...(session?.holdings || []), holding]);
+    const newHoldings = editId 
+      ? session!.holdings.map(h => h.id === editId ? holding : h) 
+      : [...(session?.holdings || []), holding];
+
+    setHoldings(newHoldings);
+
+    if (session?.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, session.market_data, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
     router.push("/portfolio/bonds");
   };
 

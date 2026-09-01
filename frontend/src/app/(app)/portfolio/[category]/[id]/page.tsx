@@ -17,17 +17,37 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
   const { session, setHoldings, setProfile } = useFinSyncSession();
   
   const [txType, setTxType] = useState<"buy" | "sell" | "deposit" | "withdraw" | "maturity" | "update_valuation" | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const holdings = session?.holdings || [];
   const marketData = session?.market_data || {};
-  const goldData = session?.gold_data;
-
-  const valuation = calculatePortfolioValuation(holdings, marketData, goldData);
+  const valuation = calculatePortfolioValuation(holdings, marketData);
   const holding = valuation.holdingsWithValuation.find(h => h.id === id && h.asset_category === category);
 
   if (!holding) {
     return <div className="text-center p-10 text-white">Holding not found</div>;
   }
+
+  const handleDeleteHolding = () => {
+    if (!session) return;
+    const newHoldings = holdings.filter(h => h.id !== holding.id);
+    setHoldings(newHoldings);
+
+    if (session.profile_input) {
+      const newProfile = syncHoldingsToProfile(newHoldings, marketData, session.profile_input);
+      const plan = generateFinancialPlan(newProfile);
+      if (session.financial_plan?.unifiedRiskFactor) plan.unifiedRiskFactor = session.financial_plan.unifiedRiskFactor;
+      if (session.financial_plan?.assetAllocation) plan.assetAllocation = session.financial_plan.assetAllocation; 
+      setProfile(newProfile, plan, session.profile_analysis);
+    }
+
+    const remainingInCat = newHoldings.filter(h => h.asset_category === holding.asset_category);
+    if (remainingInCat.length > 0) {
+      router.push(`/portfolio/${holding.asset_category}`);
+    } else {
+      router.push("/portfolio");
+    }
+  };
 
   const handleTransaction = (quantity: number, price: number, date: string) => {
     if (!session) return;
@@ -40,7 +60,7 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
     const updated = JSON.parse(JSON.stringify(newHoldings[holdingIndex])) as AnyHolding;
     
     if (txType === "update_valuation") {
-      if (updated.asset_category === "other" || updated.asset_category === "gold" || updated.asset_category === "bonds") {
+      if (updated.asset_category === "other" || updated.asset_category === "bonds") {
          (updated as any).estimated_value = quantity; // Using quantity field for the new value
          (updated as any).current_price = quantity; // bonds fallback
       }
@@ -54,7 +74,7 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
         else if (updated.asset_category === 'cash') { initialQty = updated.balance; initialInvested = updated.balance; }
         else if (updated.asset_category === 'fd') { initialQty = updated.principal; initialInvested = updated.principal; }
         else if (updated.asset_category === 'bonds') { initialQty = updated.quantity; initialInvested = updated.quantity * updated.purchase_price; }
-        else if (updated.asset_category === 'gold') { initialQty = updated.quantity; initialInvested = updated.invested_value; }
+
         else if (updated.asset_category === 'other') { initialQty = 1; initialInvested = updated.purchase_value || updated.estimated_value; }
 
         const pricePerUnit = initialQty > 0 ? initialInvested / initialQty : 1;
@@ -104,17 +124,17 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
       case "cash": return "amount";
       case "fd": return "amount";
       case "bonds": return "units";
-      case "gold": return "grams";
+
       case "other": return "amount";
       default: return "units";
     }
   };
 
   const getMaxQuantity = () => {
-    if (txType === "sell" || txType === "withdraw" || txType === "maturity") {
+    if (txType === "sell" || txType === "withdraw") {
       return holding.calculatedQuantity;
     }
-    return undefined;
+    return undefined; // no max for maturity, as it includes interest
   };
 
   const getCurrentPriceFallback = () => {
@@ -125,10 +145,6 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
       return marketData[(holding as MutualFundHolding).scheme]?.current_price || (holding as MutualFundHolding).average_purchase_nav;
     }
     if (holding.asset_category === "bonds") return (holding as any).current_price || (holding as any).purchase_price;
-    if (holding.asset_category === "gold") {
-      const purity = (holding as any).gold_type;
-      return (goldData && goldData.prices && goldData.prices[purity]) || (holding as any).average_purchase_price;
-    }
     if (holding.asset_category === "other") return (holding as any).estimated_value;
     return 1;
   };
@@ -174,18 +190,9 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
             <button onClick={() => setTxType("maturity")} className="primary-button text-xs py-1.5">Mature</button>
           </>
         );
-      case "gold":
-        return (
-          <>
-            <button onClick={() => setTxType("buy")} className="primary-button text-xs py-1.5">Buy</button>
-            <button onClick={() => setTxType("sell")} className="secondary-button border-rose-500/50 text-rose-400 hover:bg-rose-500/10 text-xs py-1.5">Sell</button>
-          </>
-        );
       case "other":
         return (
           <>
-            <button onClick={() => setTxType("buy")} className="primary-button text-xs py-1.5">Add / Increase</button>
-            <button onClick={() => setTxType("sell")} className="secondary-button border-rose-500/50 text-rose-400 hover:bg-rose-500/10 text-xs py-1.5">Reduce / Dispose</button>
             <button onClick={() => setTxType("update_valuation")} className="primary-button text-xs py-1.5">Update Valuation</button>
           </>
         );
@@ -208,11 +215,17 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
         </div>
         <div className="flex items-center gap-3 flex-wrap">
            <button onClick={() => {
-             const mapping: Record<string, string> = { stocks: 'stock', mutual_funds: 'mf', bonds: 'bond', other: 'other', fd: 'fd', cash: 'cash', gold: 'gold' };
+             const mapping: Record<string, string> = { stocks: 'stock', mutual_funds: 'mf', bonds: 'bond', other: 'other', fd: 'fd', cash: 'cash' };
              const route = mapping[holding.asset_category] || holding.asset_category;
              router.push(`/portfolio/add/${route}?editId=${holding.id}`);
            }} className="secondary-button text-xs py-1.5">Edit Metadata</button>
            {renderActionButtons()}
+           <button 
+             onClick={() => setShowDeleteConfirm(true)} 
+             className="secondary-button border-rose-500/50 text-rose-400 hover:bg-rose-500/10 text-xs py-1.5"
+           >
+             Delete Investment
+           </button>
         </div>
       </header>
       
@@ -223,7 +236,8 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
              unitLabel={getUnitLabel()}
              currentPrice={getCurrentPriceFallback()}
              maxQuantity={getMaxQuantity()}
-             isFixedPrice={holding.asset_category === "gold"}
+             defaultQuantity={txType === "maturity" ? parseFloat(holding.currentValue.toFixed(2)) : undefined}
+             isFixedPrice={false}
              onSubmit={handleTransaction}
              onCancel={() => setTxType(null)}
            />
@@ -235,7 +249,7 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
          <StatBox 
            label={
              isCash ? "Cash Balance" : 
-             (holding.asset_category === "bonds" || holding.asset_category === "gold" || holding.asset_category === "other") ? "Estimated Current Value" :
+             (holding.asset_category === "bonds" || holding.asset_category === "other") ? "Estimated Current Value" :
              "Current Value"
            } 
            value={formatRupees(holding.currentValue)} 
@@ -302,25 +316,59 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
              )}
              {holding.asset_category === 'fd' && (
                <>
-                <Row label="Principal" value={formatRupees(holding.calculatedInvested)} />
+                <Row label="Bank / Institution" value={(holding as any).institution || "N/A"} />
+                <Row label="Principal Amount" value={formatRupees((holding as any).principal || holding.calculatedInvested)} />
                 <Row label="Interest Rate" value={`${(holding as any).interest_rate}% p.a.`} />
-                <Row label="Maturity Date" value={new Date((holding as any).maturity_date).toLocaleDateString()} />
-                <Row label="Status" value={(holding as any).status.toUpperCase()} />
+                <Row label="Start Date" value={(holding as any).start_date ? new Date((holding as any).start_date).toLocaleDateString() : 'N/A'} />
+                <Row label="Maturity Date" value={(holding as any).maturity_date ? new Date((holding as any).maturity_date).toLocaleDateString() : 'N/A'} />
+                <Row label="Interest Payout" value={((holding as any).compounding_frequency || "quarterly").replace('_', ' ').toUpperCase()} />
+                <Row label="Current Accrued Interest" value={(holding as any).accrued_interest !== undefined ? formatRupees((holding as any).accrued_interest!) : formatRupees(Math.max(0, holding.currentValue - holding.calculatedInvested))} />
+                <Row label="Status" value={
+                  holding.calculatedQuantity === 0 ? "CLOSED" :
+                  new Date() >= new Date((holding as any).maturity_date) ? "MATURED" : "ACTIVE"
+                } />
                 <Row label="Valuation Source" value="Formula / Compounding" />
                </>
              )}
-             {holding.asset_category === 'bonds' && (
-               <>
-                <Row label="Quantity Held" value={holding.calculatedQuantity.toString()} />
-                <Row label="Valuation Source" value="Manual / Estimated" />
-               </>
-             )}
-             {holding.asset_category === 'gold' && (
-               <>
-                <Row label="Grams Held" value={holding.calculatedQuantity.toString()} />
-                <Row label="Valuation Source" value="Manual / Estimated" />
-               </>
-             )}
+             {holding.asset_category === 'bonds' && (() => {
+                 let accruedCoupon = 0;
+                 let annualCoupon = 0;
+                 if ((holding as any).purchase_date && (holding as any).coupon_rate && (holding as any).face_value) {
+                    const start = new Date((holding as any).purchase_date);
+                    let now = new Date();
+                    if ((holding as any).maturity_date) {
+                      const maturity = new Date((holding as any).maturity_date);
+                      if (now >= maturity) {
+                        now = maturity;
+                      }
+                    }
+                    if (now > start) {
+                       const days = (now.getTime() - start.getTime()) / (1000 * 3600 * 24);
+                       const annualCouponPerUnit = (holding as any).face_value * ((holding as any).coupon_rate / 100);
+                       annualCoupon = annualCouponPerUnit * holding.calculatedQuantity;
+                       accruedCoupon = annualCoupon * (days / 365);
+                    }
+                 }
+                 return (
+                   <>
+                    <Row label="Quantity Held" value={holding.calculatedQuantity.toString()} />
+                    <Row label="Remaining Cost Basis" value={formatRupees(holding.calculatedInvested)} />
+                    <Row label="Face Value per Unit" value={formatRupees((holding as any).face_value || 0)} />
+                    <Row label="Remaining Face Value" value={formatRupees(((holding as any).face_value || 0) * holding.calculatedQuantity)} />
+                    <Row label="Purchase Price per Unit" value={formatRupees((holding as any).purchase_price || 0)} />
+                    <Row label="Coupon Rate" value={(holding as any).coupon_rate ? `${(holding as any).coupon_rate}%` : 'N/A'} />
+                    <Row label="Annual Coupon (Est)" value={annualCoupon > 0 ? formatRupees(annualCoupon) : 'N/A'} />
+                    <Row label="Accrued Coupon (Total)" value={formatRupees(accruedCoupon)} />
+                    <Row label="Purchase Date" value={(holding as any).purchase_date ? new Date((holding as any).purchase_date).toLocaleDateString() : 'N/A'} />
+                    <Row label="Maturity Date" value={(holding as any).maturity_date ? new Date((holding as any).maturity_date).toLocaleDateString() : 'N/A'} />
+                    <Row label="Status" value={
+                      holding.calculatedQuantity === 0 ? "CLOSED" :
+                      ((holding as any).maturity_date && new Date() >= new Date((holding as any).maturity_date)) ? "MATURED" : "ACTIVE"
+                    } />
+                    <Row label="Valuation Source" value="Formula / Estimated" />
+                   </>
+                 );
+              })()}
              {holding.asset_category === 'other' && (
                <>
                 <Row label="Valuation Source" value="Manual / Estimated" />
@@ -359,6 +407,35 @@ export default function HoldingDetailPage({ params }: { params: Promise<{ catego
         </section>
       </div>
 
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-400">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-xl font-bold text-white">Delete Investment</h3>
+            </div>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-white">{holding.name}</strong>? This action cannot be undone and will permanently remove this holding and all associated transaction history.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="secondary-button text-xs py-2 px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteHolding}
+                className="bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-lg text-xs py-2 px-4 transition-colors"
+              >
+                Permanently Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
