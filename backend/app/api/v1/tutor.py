@@ -12,6 +12,8 @@ class TutorRequest(BaseModel):
     level: str | None = None
     section: str | None = None
     lesson: str | None = None
+    financial_context: dict | None = None
+    learning_context: dict | None = None
 
 
 class TutorResponse(BaseModel):
@@ -50,6 +52,20 @@ Teaching style:
 - Do not unnecessarily repeat the entire lesson.
 - Do not make the explanation overly complicated unless the user asks for
   an advanced explanation.
+
+EXPLAIN MY FINANCES (When Financial Context is provided):
+- If the user asks you to explain their portfolio, asset allocation, goals, cash flow, emergency fund, or risk score, use the provided `Financial Context`.
+- You MUST rely entirely on the provided deterministic numbers. DO NOT calculate these values yourself.
+- Explain what the specific values mean in understandable language.
+- DO NOT invent or assume any financial allocations or figures.
+- If the required data is missing, explicitly say that the data is unavailable.
+- Do not give personalized investment recommendations (e.g., "sell this stock", "buy that fund").
+
+ADAPT MY LEARNING (When Learning Context is provided):
+- Personalize how you teach based on the user's `Learning Context` (current level, completed lessons, quiz scores).
+- If quiz scores are low on a topic, offer simpler explanations and more examples.
+- If they ask repeated questions, try explaining from another perspective.
+- If they are a beginner, use simpler language. If advanced, you may use scenario-based explanations.
 
 IMPORTANT BOUNDARIES:
 - You are NOT an investment advisor.
@@ -95,6 +111,14 @@ def ask_tutor(request: TutorRequest):
 
     if request.lesson:
         context.append(f"Lesson: {request.lesson}")
+
+    if request.financial_context:
+        import json
+        context.append(f"Financial Context:\n{json.dumps(request.financial_context)}")
+
+    if request.learning_context:
+        import json
+        context.append(f"Learning Context:\n{json.dumps(request.learning_context)}")
 
     context_text = "\n".join(context)
 

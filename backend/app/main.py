@@ -9,6 +9,7 @@ from app.api.v1.goals import router as goals_router
 from app.api.v1.agent import router as agent_router
 from app.api.v1.me import router as me_router
 from app.api.v1.tutor import router as tutor_router
+from app.api.v1.investment_chat import router as investment_chat_router
 
 app = FastAPI(
     title="FinSync API",
@@ -30,6 +31,7 @@ app.include_router(goals_router, prefix="/api/v1")
 app.include_router(agent_router, prefix="/api/v1")
 app.include_router(me_router, prefix="/api/v1")
 app.include_router(tutor_router, prefix="/api/v1")
+app.include_router(investment_chat_router, prefix="/api/v1")
 
 
 @app.get("/")
