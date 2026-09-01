@@ -1,2 +1,8 @@
-import { MarketContextCard } from "@/components/onboarding/MarketContextCard"; import { ComingSoon, PageHeader } from "@/components/ui";
-export default function MarketPage() { return <><PageHeader title="Market Intelligence" description="NIFTY 50 historical-pattern context from the existing market-regime model." /><MarketContextCard showDebug={false} /><p className="mt-4 rounded-xl bg-sky-400/5 p-4 text-sm text-sky-200/70">Market regimes are historical pattern labels—not forecasts, recommendations, or trade signals.</p><div className="mt-5 grid gap-4 md:grid-cols-3"><ComingSoon title="Relevant news" description="Source-linked news context will be added later." /><ComingSoon title="Sector context" description="Sector-level context is reserved for a later model phase." /><ComingSoon title="Watchlist" description="No securities are tracked in this foundation." /></div></>; }
+import { MarketIntelligence } from "@/components/market/MarketIntelligence";
+import { StockAnalyzer } from "@/components/market/StockAnalyzer";
+import { MarketOverview } from "@/components/market/MarketOverview";
+import { PageHeader } from "@/components/ui";
+
+export default function MarketPage() {
+  return <div className="mx-auto w-full max-w-6xl py-3"><PageHeader title="Market Intelligence" description="Current Indian broad-market context followed by optional research on an individual global equity." /><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.18em] text-sky-300">Broad Market · India</p><h2 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Overall Market Analysis</h2></div><MarketOverview /><MarketIntelligence /><div className="mb-5 mt-12"><p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-300">Global equities</p><h2 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Individual Stock Research</h2><p className="mt-2 text-sm text-slate-500">Select one listed company for separate technical, fundamental, and risk analysis.</p></div><StockAnalyzer /></div>;
+}
