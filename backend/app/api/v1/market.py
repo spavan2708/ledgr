@@ -5,13 +5,25 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 
 from app.ml.market_regime.inference import get_market_regime
-from app.schemas.market import MarketRegimeResponse
+from app.schemas.market import MarketOverviewResponse, MarketRegimeResponse, StockAnalysisRequest, StockAnalysisResponse
+from app.market.stock_analysis import analyze_stock
+from app.market.overview import get_market_overview
 
 router = APIRouter(prefix="/market", tags=["market data"])
 
 @router.get("/regime", response_model=MarketRegimeResponse)
 def market_regime(mode: Literal["live", "demo"] = Query(default="live")) -> MarketRegimeResponse:
     return get_market_regime(mode)
+
+
+@router.post("/analyze", response_model=StockAnalysisResponse)
+def stock_analysis(request: StockAnalysisRequest) -> StockAnalysisResponse:
+    return analyze_stock(request.symbol)
+
+
+@router.get("/overview", response_model=MarketOverviewResponse)
+def market_overview() -> MarketOverviewResponse:
+    return get_market_overview()
 
 class QuoteResponse(BaseModel):
     symbol: str
