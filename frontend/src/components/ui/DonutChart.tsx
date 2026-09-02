@@ -63,7 +63,7 @@ export function DonutChart({
       <div className="relative" style={{ width: size, height: size }}>
         {data.length === 0 ? (
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-             <circle cx={center} cy={center} r={radius} fill="transparent" stroke="#1e293b" strokeWidth={strokeWidth} />
+             <circle cx={center} cy={center} r={radius} fill="transparent" stroke="#d6cdbd" strokeWidth={strokeWidth} />
           </svg>
         ) : (
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">

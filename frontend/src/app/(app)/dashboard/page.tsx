@@ -25,9 +25,9 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Overview</h1>
           <p className="mt-4 text-sm leading-6 text-slate-400">Your adaptive financial plan will come together here.</p>
         </div>
-        <div className="w-full space-y-4 rounded-2xl border border-white/10 bg-black/20 p-10 text-center shadow-xl shadow-black/50">
+        <div className="w-full space-y-4 rounded-2xl border border-black bg-white p-10 text-center shadow-lg shadow-black/10">
           <h3 className="text-xl font-bold text-white">Build your Financial Digital Profile</h3>
-          <p className="mt-2 text-sm text-slate-400 mb-6">Add your financial inputs to calculate transparent ratios, capacity, a FinSync score, and an ML pattern persona.</p>
+          <p className="mt-2 text-sm text-slate-400 mb-6">Add your financial inputs to calculate transparent ratios, capacity, a ledgr score, and an ML pattern persona.</p>
           <Link href="/profile" className="primary-button">Complete profile</Link>
         </div>
       </div>

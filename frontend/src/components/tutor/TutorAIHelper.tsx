@@ -30,7 +30,7 @@ export function TutorAIHelper({ lessonTitle, concept, level }: TutorAIHelperProp
 
   const modeDescription = mode === "ADAPT_LEARNING"
     ? "Adapts teaching based on your learning progress."
-    : "Explains your actual FinSync financial state.";
+    : "Explains your actual ledgr financial state.";
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

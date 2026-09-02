@@ -72,7 +72,7 @@ export default function TutorHome() {
                   <div className="flex items-center gap-3 mb-2">
                     <h2 className="text-3xl font-bold tracking-tight text-white uppercase">{level.id}</h2>
                     {passed && <Badge tone="success">Passed</Badge>}
-                    {!unlocked && <Badge tone="neutral">🔒 Locked</Badge>}
+                    {!unlocked && <Badge tone="neutral"> Locked</Badge>}
                   </div>
                   <h3 className="text-xl font-medium text-emerald-400">{level.title}</h3>
                   <p className="text-slate-400 mt-1 max-w-2xl">{level.description}</p>
@@ -84,7 +84,7 @@ export default function TutorHome() {
                     target="_blank"
                     className="secondary-button text-xs !px-3 !py-1.5 whitespace-nowrap"
                   >
-                    📄 Download Notes
+                     Download Notes
                   </Link>
                   <div className="text-right">
                     <div className="text-sm font-medium text-slate-300">
@@ -110,7 +110,7 @@ export default function TutorHome() {
                               className={`flex items-center w-full gap-3 rounded-lg p-3 transition-colors ${unlocked ? 'cursor-pointer hover:bg-white/10' : 'pointer-events-none opacity-50'} ${isDone ? 'text-emerald-400' : 'text-slate-300'}`}
                             >
                               <span className={`text-lg leading-none shrink-0 ${isDone ? '' : 'text-slate-500'}`}>
-                                {isDone ? '✓' : '▶'}
+                                {isDone ? '' : '▶'}
                               </span>
                               <span className="text-sm font-medium leading-tight">{lesson.title}</span>
                             </Link>
@@ -128,7 +128,7 @@ export default function TutorHome() {
                     Learn Through Videos
                   </h3>
                   <p className="text-slate-400 text-sm">
-                    <span className="text-xl mr-2">🎥</span>
+                    <span className="text-xl mr-2"></span>
                     Recommended videos to reinforce what you learned in this level.
                   </p>
                   
@@ -162,7 +162,7 @@ export default function TutorHome() {
                     {passed 
                       ? `You passed this level with a score of ${score}/10.` 
                       : !unlocked
-                        ? `🔒 Complete ${level.id === "MODERATE" ? "Beginner" : "Moderate"} to unlock the ${level.id} assessment.`
+                        ? ` Complete ${level.id === "MODERATE" ? "Beginner" : "Moderate"} to unlock the ${level.id} assessment.`
                         : canTakeAssessment 
                           ? "You've completed all lessons! Take the assessment to unlock the next level." 
                           : "Complete all lessons to unlock the assessment."}

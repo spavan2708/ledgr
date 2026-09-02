@@ -1,3 +1,11 @@
-"use client";
-import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider"; import { Card, EmptyState, PageHeader } from "@/components/ui";
-export default function AssistantPage() { const { session } = useFinSyncSession(); return <><PageHeader title="AI Companion" description="A full view of the current browser-session conversation and approval history." />{session?.conversation.length ? <Card><div className="space-y-4">{session.conversation.map((message, index) => <article key={index} className={`rounded-xl p-4 ${message.role === "user" ? "ml-10 bg-sky-400/10" : "mr-10 bg-white/5"}`}><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{message.role}</p><p className="mt-2 text-sm leading-6 text-slate-200">{message.content}</p>{message.proposal && <p className="mt-2 text-xs capitalize text-emerald-300">Proposal {message.proposal.status}</p>}</article>)}</div></Card> : <EmptyState title="Start with the Companion launcher" description="Ask why a strategy was suggested, preview a salary/capacity update, or delay a current goal. Missing profile or goal context will be explained." />}<p className="mt-5 text-xs leading-5 text-slate-500">Conversation and proposal history are stored only in this browser session. The compact launcher remains available on protected pages.</p></>; }
+import { InvestmentChatbot } from "@/components/investment/InvestmentChatbot";
+import { PageHeader } from "@/components/ui";
+
+export default function AssistantPage() {
+  return (
+    <>
+      <PageHeader title="ledgr assistant" description="Ask questions and learn about investing, markets, and personal finance concepts." />
+      <InvestmentChatbot />
+    </>
+  );
+}

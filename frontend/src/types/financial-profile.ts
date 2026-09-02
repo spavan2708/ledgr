@@ -149,7 +149,7 @@ export interface FinancialProfileResult {
   metrics: FinancialMetrics;
   ratios: RatioDetail[];
   financial_health_score: number;
-  score_name: "FinSync Adaptive Health Score \u2014 a proprietary educational indicator.";
+  score_name: "ledgr Adaptive Health Score \u2014 a proprietary educational indicator.";
   health_label: "Needs Attention" | "Developing" | "Healthy" | "Strong";
   score_explanations: ScoreComponent[];
   model_features: ModelFeatures;

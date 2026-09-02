@@ -1,6 +1,57 @@
 "use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { APP_NAVIGATION } from "@/lib/navigation";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
-export function AppShell({ children }: { children: React.ReactNode }) { const pathname = usePathname(); const router = useRouter(); const { clearSession } = useFinSyncSession(); const resetSession = () => { clearSession(); router.push("/"); router.refresh(); }; return <div className="min-h-screen bg-slate-950 text-white"><aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-white/10 bg-slate-950 p-5 lg:block"><Link href="/dashboard" className="text-2xl font-bold">Fin<span className="text-emerald-400">Sync</span></Link><nav className="mt-8 space-y-1">{APP_NAVIGATION.map(([label, href, icon]) => <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${pathname === href ? "bg-emerald-400/10 text-emerald-300" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><span>{icon}</span>{label}</Link>)}</nav></aside><div className="lg:pl-64"><header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-white/10 bg-slate-950/95 px-4 backdrop-blur sm:px-7"><Link href="/dashboard" className="font-bold lg:hidden">Fin<span className="text-emerald-400">Sync</span></Link><span className="hidden text-sm text-slate-500 lg:block">Adaptive financial planning</span><div className="flex items-center gap-2"><Link href="/notifications" aria-label="Notifications" className="rounded-lg p-2 text-slate-400 hover:bg-white/5">◇</Link><button type="button" onClick={resetSession} className="secondary-button !px-3 !py-2">Reset Session</button></div></header><main className="mx-auto min-h-[calc(100vh-4rem)] max-w-7xl px-4 py-7 pb-24 sm:px-7 lg:pb-7">{children}</main></div><nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-white/10 bg-slate-950 p-2 lg:hidden">{APP_NAVIGATION.slice(0, 5).map(([label, href, icon]) => <Link key={href} href={href} aria-label={label} className={`rounded-lg px-4 py-2 text-lg ${pathname === href ? "bg-emerald-400/10 text-emerald-300" : "text-slate-500"}`}>{icon}</Link>)}</nav></div>; }
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { clearSession } = useFinSyncSession();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const resetSession = () => {
+    clearSession();
+    router.push("/");
+    router.refresh();
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-black">
+      <aside aria-hidden={!sidebarOpen} className={`fixed inset-y-0 left-0 z-30 w-64 overflow-hidden border-r border-black bg-white transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "pointer-events-none -translate-x-full"}`}>
+        <div className="flex h-16 w-64 items-center justify-between border-b border-black/10 px-5">
+          <Link href="/dashboard" className="text-2xl font-black tracking-[-0.05em]">ledgr</Link>
+          <button type="button" onClick={() => setSidebarOpen(false)} aria-label="Hide sidebar" className="rounded-lg p-2 hover:bg-black hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <nav className="w-64 space-y-1 p-4">
+          {APP_NAVIGATION.map(([label, href, Icon]) => (
+            <Link key={href} href={href} onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${pathname === href || pathname.startsWith(`${href}/`) ? "bg-black text-white" : "text-black hover:bg-black hover:text-white"}`}>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      <div className={`transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "pl-0"}`}>
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-black bg-white px-4 sm:px-7">
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setSidebarOpen((open) => !open)} aria-label={sidebarOpen ? "Hide sidebar" : "Open sidebar"} aria-expanded={sidebarOpen} className="rounded-lg border border-black/10 bg-white p-2 hover:bg-black hover:text-white">
+              <Menu className="h-5 w-5" />
+            </button>
+            {!sidebarOpen && <Link href="/dashboard" className="text-xl font-black tracking-[-0.05em]">ledgr</Link>}
+          </div>
+          <button type="button" onClick={resetSession} className="secondary-button !px-3 !py-2">Reset Session</button>
+        </header>
+        <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-7xl px-4 py-7 pb-24 sm:px-7">{children}</main>
+      </div>
+
+      {sidebarOpen && <button type="button" aria-label="Close sidebar overlay" onClick={() => setSidebarOpen(false)} className="sidebar-backdrop fixed inset-0 z-20 bg-black lg:hidden" />}
+    </div>
+  );
+}

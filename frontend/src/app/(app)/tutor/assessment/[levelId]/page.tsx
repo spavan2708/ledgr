@@ -71,7 +71,7 @@ export default function AssessmentPage({ params }: { params: Promise<{ levelId: 
         
         <div className={`p-6 rounded-2xl border ${passed ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
           <h2 className={`text-2xl font-bold ${passed ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {passed ? "Level Passed! ✓" : "Did Not Pass"}
+            {passed ? "Level Passed! " : "Did Not Pass"}
           </h2>
           <p className="mt-2 text-slate-300">
             {passed 

@@ -59,12 +59,12 @@ export function LessonControls({ lessonId, nextLessonId, prevLessonId, levelId }
             onClick={handleComplete}
             className="flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
           >
-            <span className="text-xl">✓</span>
+            <span className="text-xl"></span>
             Mark Lesson Complete
           </button>
         ) : (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 font-bold text-emerald-400">
-            <span className="text-xl">✓</span>
+            <span className="text-xl"></span>
             Lesson Completed
           </div>
         )}

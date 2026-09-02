@@ -72,9 +72,9 @@ export function SpendingAnalysis({ profile, monthlySurplus }: SpendingAnalysisPr
   const discretionaryPct = totalLivingExpenses > 0 ? Math.round((totalDiscretionary / totalLivingExpenses) * 100) : 0;
 
   const chartData = [
-    { name: "Essential", value: totalEssential, color: "#34d399" }, // emerald-400
-    { name: "Discretionary", value: totalDiscretionary, color: "#38bdf8" }, // sky-400
-    { name: "Commitments", value: totalCommitments, color: "#fbbf24" }, // amber-400
+    { name: "Essential", value: totalEssential, color: "#15803d" },
+    { name: "Discretionary", value: totalDiscretionary, color: "#dc2626" },
+    { name: "Commitments", value: totalCommitments, color: "#4ade80" },
   ].filter(d => d.value > 0);
 
   const largestExpense = validExpenses[0];
@@ -107,8 +107,8 @@ export function SpendingAnalysis({ profile, monthlySurplus }: SpendingAnalysisPr
                 </Pie>
                 <Tooltip 
                   formatter={(value: any) => formatRupees(Number(value))}
-                  contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '0.5rem', color: '#f8fafc' }}
-                  itemStyle={{ color: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#0a0a0a', borderRadius: '0.5rem', color: '#0a0a0a' }}
+                  itemStyle={{ color: '#0a0a0a' }}
                 />
               </PieChart>
             </ResponsiveContainer>

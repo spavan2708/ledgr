@@ -4,19 +4,148 @@ import { useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { formatRupees } from "@/lib/formatters";
 import { useFinSyncSession } from "@/components/session/FinSyncSessionProvider";
-import type { AgentProposal, ProposalChange, SessionContext } from "@/types/session";
+import type { AgentProposal, ProposalChange } from "@/types/session";
 import { isProtectedPath } from "@/lib/supabase/config";
 
 const api = () => (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
-export function AICompanion() {
-  const { session, addMessage, applyProposal, clearSession } = useFinSyncSession(); const router = useRouter(); const pathname = usePathname();
-  const [open, setOpen] = useState(false); const [input, setInput] = useState(""); const [busy, setBusy] = useState(false);
+
+export function AICompanion({ inline = false }: { inline?: boolean }) {
+  const { session, addMessage, applyProposal, clearSession } = useFinSyncSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+
   if (!session || !isProtectedPath(pathname) || pathname === "/setup") return null;
-  const submit = async (event: FormEvent) => { event.preventDefault(); if (!input.trim()) return; const message = input.trim(); setInput(""); addMessage({ role: "user", content: message }); setBusy(true); try { const response = await fetch(`${api()}/api/v1/agent/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: session.session_id, message, context: context(session) }) }); const body = await response.json(); if (!response.ok) throw new Error("Companion request failed"); addMessage({ role: "assistant", content: body.message, proposal: body.proposal ?? undefined }); } catch { addMessage({ role: "assistant", content: "The companion is unavailable. Your session was not changed." }); } finally { setBusy(false); } };
-  const decide = async (proposal: AgentProposal, action: "approve" | "reject") => { const response = await fetch(`${api()}/api/v1/agent/proposals/${proposal.id}/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: session.session_id }) }); const body = await response.json(); if (response.ok) applyProposal(body.proposal, body.context ?? undefined); };
-  const clear = () => { if (!confirm("Clear all FinSync data from this browser session? Other websites and unrelated session data will remain untouched.")) return; clearSession(); setOpen(false); router.push("/onboarding"); };
-  return <><button type="button" onClick={() => setOpen(!open)} className="fixed bottom-5 right-5 z-40 rounded-full bg-emerald-400 px-5 py-3 font-bold text-emerald-950 shadow-xl">AI Companion</button>{open && <aside className="fixed bottom-20 right-5 z-40 flex max-h-[75vh] w-[min(420px,calc(100vw-2.5rem))] flex-col rounded-2xl border border-white/15 bg-slate-950 p-4 shadow-2xl"><div className="flex justify-between"><strong className="text-white">FinSync Companion</strong><button type="button" onClick={clear} className="text-xs text-rose-300">Clear Session</button></div><div className="my-4 space-y-3 overflow-y-auto">{session.conversation.length === 0 && <p className="text-sm text-slate-500">Ask why a strategy was suggested or preview a supported profile or goal change.</p>}{session.conversation.map((m, i) => <div key={i} className={`rounded-xl p-3 text-sm ${m.role === "user" ? "ml-8 bg-sky-400/10 text-sky-100" : "mr-5 bg-white/5 text-slate-200"}`}><p>{m.content}</p>{m.proposal && <Proposal proposal={m.proposal} decide={decide} />}</div>)}</div><form onSubmit={submit} className="flex gap-2"><input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} className="goal-input" placeholder="Ask FinSync…" /><button disabled={busy} className="primary-button">Send</button></form></aside>}</>;
+  if (!inline && pathname === "/assistant") return null;
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const message = input.trim();
+    if (!message || busy) return;
+
+    setInput("");
+    addMessage({ role: "user", content: message });
+    setBusy(true);
+
+    try {
+      const response = await fetch(`${api()}/api/v1/agent/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: session.session_id,
+          message,
+          context: buildContext(session),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error("Assistant request failed");
+      addMessage({ role: "assistant", content: body.message, proposal: body.proposal ?? undefined });
+    } catch {
+      addMessage({ role: "assistant", content: "The assistant is unavailable. Your session was not changed." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const decide = async (proposal: AgentProposal, action: "approve" | "reject") => {
+    try {
+      const response = await fetch(`${api()}/api/v1/agent/proposals/${proposal.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: session.session_id }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error("Proposal request failed");
+      applyProposal(body.proposal, body.context ?? undefined);
+    } catch {
+      addMessage({ role: "assistant", content: "That proposal could not be updated. Your session was not changed." });
+    }
+  };
+
+  const clear = () => {
+    if (!confirm("Clear all ledgr data from this browser session? Other websites and unrelated session data will remain untouched.")) return;
+    clearSession();
+    setOpen(false);
+    router.push("/onboarding");
+  };
+
+  const panel = (
+    <section aria-label="ledgr assistant chat" className={`flex flex-col border border-black bg-white ${inline ? "min-h-[620px] rounded-2xl" : "fixed bottom-20 right-5 z-40 max-h-[75vh] w-[min(420px,calc(100vw-2.5rem))] rounded-2xl shadow-2xl"}`}>
+      <header className="flex items-center justify-between border-b border-black p-4">
+        <div>
+          <strong className="text-black">ledgr assistant</strong>
+          <p className="mt-1 text-xs text-black">Your financial planning assistant</p>
+        </div>
+        <button type="button" onClick={clear} className="text-xs font-semibold text-black underline underline-offset-4">Clear Session</button>
+      </header>
+
+      <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+        {session.conversation.length === 0 && (
+          <div className="mx-auto max-w-lg py-16 text-center">
+            <h2 className="text-xl font-bold text-black">How can I help with your plan?</h2>
+            <p className="mt-3 text-sm leading-6 text-black">Ask why a strategy was suggested, preview a supported profile or goal change, or review your current financial context.</p>
+          </div>
+        )}
+        {session.conversation.map((message, index) => (
+          <div key={index} className={`rounded-xl border border-black p-3 text-sm leading-6 ${message.role === "user" ? "ml-8 bg-black text-white" : "mr-5 bg-white text-black"}`}>
+            <p>{message.content}</p>
+            {message.proposal && <Proposal proposal={message.proposal} decide={decide} />}
+          </div>
+        ))}
+        {busy && <p className="text-sm font-semibold text-black">ledgr assistant is responding...</p>}
+      </div>
+
+      <form onSubmit={submit} className="flex gap-2 border-t border-black p-4">
+        <input value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000} className="goal-input" placeholder="Ask ledgr" aria-label="Message ledgr assistant" />
+        <button type="submit" disabled={busy || !input.trim()} className="primary-button disabled:cursor-not-allowed disabled:opacity-50">Send</button>
+      </form>
+    </section>
+  );
+
+  if (inline) return panel;
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} className="fixed bottom-5 right-5 z-40 rounded-full bg-black px-5 py-3 font-bold text-white shadow-xl">ledgr assistant</button>
+      {open && panel}
+    </>
+  );
 }
-function context(s: NonNullable<ReturnType<typeof useFinSyncSession>["session"]>): SessionContext { return { profile_input: s.profile_input, profile_analysis: s.profile_analysis, financial_plan: s.financial_plan, declared_monthly_capacity: s.declared_monthly_capacity, goals: s.goals, goal_simulation: s.goal_simulation, holdings: s.holdings, market_data: s.market_data }; }
-function Proposal({ proposal, decide }: { proposal: AgentProposal; decide: (p: AgentProposal, a: "approve" | "reject") => void }) { return <section className="mt-3 border-t border-white/10 pt-3"><strong>{proposal.summary}</strong><ul className="mt-2 space-y-1">{proposal.changes.map((c) => <li key={c.field}>{c.label}: {show(c, c.old_value)} → {show(c, c.new_value)}</li>)}</ul>{proposal.status === "pending" ? <div className="mt-3 flex gap-2"><button onClick={() => decide(proposal, "approve")} type="button" className="primary-button">Approve</button><button onClick={() => decide(proposal, "reject")} type="button" className="secondary-button">Reject</button></div> : <p className="mt-2 capitalize text-slate-400">{proposal.status}</p>}</section>; }
-function show(change: ProposalChange, value: unknown): string { if (value === null || value === undefined) return "Not set"; if (change.format === "currency" && typeof value === "number") return formatRupees(value); if (change.format === "percentage" && typeof value === "number") return `${value}%`; if (change.format === "months" && typeof value === "number") return `${value} months`; if (change.format === "status") return String(value).replaceAll("_", " "); return typeof value === "object" ? JSON.stringify(value) : String(value); }
+
+function buildContext(session: NonNullable<ReturnType<typeof useFinSyncSession>["session"]>) {
+  return {
+    profile_input: session.profile_input,
+    profile_analysis: session.profile_analysis,
+    declared_monthly_capacity: session.declared_monthly_capacity,
+    goals: session.goals,
+    goal_simulation: session.goal_simulation,
+  };
+}
+
+function Proposal({ proposal, decide }: { proposal: AgentProposal; decide: (proposal: AgentProposal, action: "approve" | "reject") => void }) {
+  return (
+    <section className="mt-3 border-t border-black pt-3">
+      <strong>{proposal.summary}</strong>
+      <ul className="mt-2 space-y-1">
+        {proposal.changes.map((change) => <li key={change.field}>{change.label}: {show(change, change.old_value)} to {show(change, change.new_value)}</li>)}
+      </ul>
+      {proposal.status === "pending" ? (
+        <div className="mt-3 flex gap-2">
+          <button onClick={() => decide(proposal, "approve")} type="button" className="primary-button">Approve</button>
+          <button onClick={() => decide(proposal, "reject")} type="button" className="secondary-button">Reject</button>
+        </div>
+      ) : <p className="mt-2 capitalize text-black">{proposal.status}</p>}
+    </section>
+  );
+}
+
+function show(change: ProposalChange, value: unknown): string {
+  if (value === null || value === undefined) return "Not set";
+  if (change.format === "currency" && typeof value === "number") return formatRupees(value);
+  if (change.format === "percentage" && typeof value === "number") return `${value}%`;
+  if (change.format === "months" && typeof value === "number") return `${value} months`;
+  if (change.format === "status") return String(value).replaceAll("_", " ");
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
+}

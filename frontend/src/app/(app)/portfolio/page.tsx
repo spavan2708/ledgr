@@ -19,12 +19,12 @@ export default function PortfolioPage() {
   const totalValue = valuation.totalCurrentValue;
 
   const categoryColors: Record<AssetCategoryType, string> = {
-    stocks: "#3b82f6", // blue
-    mutual_funds: "#8b5cf6", // purple
-    fd: "#f59e0b", // amber
-    bonds: "#10b981", // emerald
-    cash: "#64748b", // slate
-    other: "#a8a29e" // stone
+    stocks: "#15803d",
+    mutual_funds: "#dc2626",
+    fd: "#4ade80",
+    bonds: "#ef4444",
+    cash: "#166534",
+    other: "#b91c1c"
   };
 
   const categoryNames: Record<AssetCategoryType, string> = {

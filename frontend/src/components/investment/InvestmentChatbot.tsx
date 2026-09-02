@@ -92,7 +92,8 @@ export function InvestmentChatbot() {
       const body = await response.json();
       if (!response.ok) throw new Error("Chat request failed");
       
-      setConversation(prev => [...prev, { role: "assistant", content: body.reply }]);
+      const reply = String(body.reply).replace(/FinSync/gi, "ledgr");
+      setConversation(prev => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setConversation(prev => [...prev, { role: "assistant", content: "I'm sorry, I am currently unavailable. Please try again later." }]);
     } finally {
@@ -125,7 +126,7 @@ export function InvestmentChatbot() {
       <div className="flex items-center justify-between border-b border-white/10 bg-slate-900 p-4">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span className="text-xl">💬</span> Investment Education Assistant
+            <span className="text-xl"></span> ledgr assistant
           </h2>
           <p className="text-xs text-slate-400">Ask general investment and personal finance questions.</p>
         </div>
@@ -136,7 +137,7 @@ export function InvestmentChatbot() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              Using your FinSync financial plan
+              Using your ledgr financial plan
             </div>
           )}
           {conversation.length > 0 && (
@@ -153,8 +154,8 @@ export function InvestmentChatbot() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {conversation.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 text-slate-400">
-            <div className="text-4xl">🎓</div>
-            <p className="max-w-md">I am your Investment Education Assistant. I can explain financial concepts, asset classes, and market terminology.</p>
+            <div className="text-4xl"></div>
+            <p className="max-w-md">I am your ledgr assistant. I can explain financial concepts, asset classes, and market terminology.</p>
             <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-lg">
               {starterPrompts.map(prompt => (
                 <button 

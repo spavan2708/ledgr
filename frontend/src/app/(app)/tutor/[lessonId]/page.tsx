@@ -71,7 +71,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
 
         <Card className="border-emerald-500/20 bg-emerald-500/5">
           <div className="flex items-start gap-4">
-            <span className="text-2xl mt-1 shrink-0">🎯</span>
+            <span className="text-2xl mt-1 shrink-0"></span>
             <div>
               <h2 className="text-lg font-bold text-emerald-400 mb-2">Core Concept</h2>
               <p className="text-slate-200 leading-relaxed text-lg">{lesson.coreConcept}</p>
@@ -81,7 +81,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
 
         <Card>
           <div className="flex items-start gap-4">
-            <span className="text-2xl mt-1 shrink-0">💡</span>
+            <span className="text-2xl mt-1 shrink-0"></span>
             <div>
               <h2 className="text-lg font-bold text-amber-400 mb-2">Simple Explanation</h2>
               <p className="text-slate-300 leading-relaxed">{lesson.simpleExplanation}</p>
@@ -125,7 +125,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
             <ul className="space-y-2">
               {lesson.importantTakeaways.map((takeaway, i) => (
                 <li key={i} className="flex items-start gap-2 text-slate-300">
-                  <span className="text-emerald-500 mt-0.5">✓</span>
+                  <span className="text-emerald-500 mt-0.5"></span>
                   <span>{takeaway}</span>
                 </li>
               ))}
@@ -138,7 +138,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
               <ul className="space-y-2">
                 {lesson.commonMistakes.map((mistake, i) => (
                   <li key={i} className="flex items-start gap-2 text-slate-300">
-                    <span className="text-rose-500 mt-0.5">✕</span>
+                    <span className="text-rose-500 mt-0.5"></span>
                     <span>{mistake}</span>
                   </li>
                 ))}

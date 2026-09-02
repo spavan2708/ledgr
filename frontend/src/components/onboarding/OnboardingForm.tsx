@@ -254,7 +254,7 @@ export function OnboardingForm() {
   return (
     <div className="mx-auto w-full max-w-4xl py-10">
       <div className="mb-8 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold tracking-tight text-white">Fin<span className="text-emerald-400">Sync</span></Link>
+        <Link href="/" className="text-xl font-black tracking-[-0.05em] text-black">ledgr</Link>
         <span className="hidden text-xs text-slate-500 sm:block">Private by design &middot; No account needed</span>
       </div>
       <div className="onboarding-card">
@@ -423,7 +423,7 @@ export function OnboardingForm() {
         </form>
       </div>
       <p className="mx-auto mt-5 max-w-2xl text-center text-xs leading-5 text-slate-600">
-        FinSync provides educational financial planning simulations &mdash; not guaranteed returns or regulated investment advice.
+        ledgr provides educational financial planning simulations &mdash; not guaranteed returns or regulated investment advice.
       </p>
     </div>
   );
