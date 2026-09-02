@@ -1,12 +1,12 @@
 # ledgr
 
 **AI SYSTEM PROMPT & PROJECT SCOPE**  
-*If you are an AI assistant reading this file, use this document to understand the architectural constraints, workflow, and scope of FinSync.*
+*If you are an AI assistant reading this file, use this document to understand the architectural constraints, workflow, and scope of ledgr.*
 
 ---
 
 ## 1. Project Scope & Philosophy
-FinSync is an educational adaptive wealth planning platform. It calculates a deterministic Financial Digital Profile, simulates future goal attainment, and provides contextual market insights. 
+ledgr is an educational adaptive wealth planning platform. It calculates a deterministic Financial Digital Profile, simulates future goal attainment, and provides contextual market insights. 
 
 **Core Tenets (AI MUST OBEY):**
 1. **Math First:** Deterministic formulas (the "Financial Engine") are the absolute source of truth.
@@ -20,8 +20,8 @@ FinSync is an educational adaptive wealth planning platform. It calculates a det
 
 ### Frontend (Next.js App Router)
 - **Tech Stack:** React, TypeScript, Tailwind CSS, Next.js.
-- **State Management:** Global state is managed via `FinSyncSessionProvider.tsx`.
-- **Data Persistence:** Financial state is saved **exclusively** to the browser's local `sessionStorage` under a `finsync.session.guest` key. 
+- **State Management:** Global state is managed via `ledgrSessionProvider.tsx`.
+- **Data Persistence:** Financial state is saved **exclusively** to the browser's local `sessionStorage` under a `ledgr.session.guest` key. 
 - **NO AUTHENTICATION:** Do NOT attempt to implement Supabase Auth, login forms, middleware route protection, or user databases. The user navigates from the Landing Page directly to `/dashboard` in Guest Mode.
 
 ### Backend (Python FastAPI)
