@@ -1,4 +1,4 @@
-# FinSync
+# ledgr
 
 **AI SYSTEM PROMPT & PROJECT SCOPE**  
 *If you are an AI assistant reading this file, use this document to understand the architectural constraints, workflow, and scope of FinSync.*
