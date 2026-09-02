@@ -3,6 +3,8 @@
 **AI SYSTEM PROMPT & PROJECT SCOPE**  
 *If you are an AI assistant reading this file, use this document to understand the architectural constraints, workflow, and scope of ledgr.*
 
+YT VIDEO LINK - https://www.youtube.com/watch?v=0s59OQgdSnQ
+
 ---
 
 ## 1. Project Scope & Philosophy
