@@ -1,8 +1,4 @@
 # ledgr
-
-**AI SYSTEM PROMPT & PROJECT SCOPE**  
-*If you are an AI assistant reading this file, use this document to understand the architectural constraints, workflow, and scope of ledgr.*
-
 YT VIDEO LINK - https://www.youtube.com/watch?v=0s59OQgdSnQ
 
 ---
@@ -10,10 +6,10 @@ YT VIDEO LINK - https://www.youtube.com/watch?v=0s59OQgdSnQ
 ## 1. Project Scope & Philosophy
 ledgr is an educational adaptive wealth planning platform. It calculates a deterministic Financial Digital Profile, simulates future goal attainment, and provides contextual market insights. 
 
-**Core Tenets (AI MUST OBEY):**
+**Core Principles:**
 1. **Math First:** Deterministic formulas (the "Financial Engine") are the absolute source of truth.
-2. **AI as Context:** Machine Learning (Personas) and LLMs (Gemini Chatbots) exist ONLY to provide educational context. They must **never** override deterministic calculations, invent math, or silently modify state.
-3. **No Financial Advice:** This is an educational simulation. Outputs must remain educational.
+2. **AI as Context:** Machine Learning (Personas) and LLMs (Gemini Chatbots) exist ONLY to provide educational context. They never override deterministic calculations, invent math, or silently modify state.
+3. **No Financial Advice:** This is an educational simulation. Outputs remain educational.
 4. **Privacy First (No Authentication):** The application runs entirely in a disconnected "Guest Mode." There is no login, no signup, and no user database.
 
 ---
@@ -73,16 +69,9 @@ npm run dev
 ```
 Open `http://localhost:3000`.
 
----
 
-## 5. Development Rules for AI Agents
-1. **Do not add login:** Any request to modify user sessions should rely on local `sessionStorage`. Do not add Supabase Auth.
-2. **Keep the frontend dumb to LLMs:** If you build a new AI feature, build the endpoint in FastAPI, and fetch it from Next.js.
-3. **Respect boundaries:** Do not mix the Goal Simulator's math with the LLM's prompt. They operate independently; the frontend orchestrates them.
 
----
-
-## 6. Extended Features Guide
+## 5. Features Guide
 
 Ledgr (FinSync) comprises several interconnected modules designed to provide a comprehensive, transparent, and educational wealth planning experience. 
 
